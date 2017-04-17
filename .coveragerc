@@ -1,0 +1,16 @@
+[paths]
+source =
+   src/ff_sig_verify
+   */site-packages/ff_sig_verify
+
+[run]
+branch = true
+source =
+    ff_sig_verify
+    tests
+parallel = true
+
+[report]
+show_missing = true
+precision = 2
+omit = *migrations*

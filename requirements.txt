@@ -1,0 +1,12 @@
+appdirs
+boto3
+botocore
+docutils
+futures
+jmespath
+packaging
+pyparsing
+python-dateutil
+s3transfer
+six
+lambda-setuptools
