@@ -2,6 +2,8 @@
 Overview
 ========
 
+.. attention:: Badges & Automation won't be enabled until merged.
+
 .. start-badges
 
 .. list-table::
@@ -64,8 +66,6 @@ Overview
 .. end-badges
 
 AWS Lambda to check code signatures.
-
-* Free software: BSD license
 
 Installation
 ============
