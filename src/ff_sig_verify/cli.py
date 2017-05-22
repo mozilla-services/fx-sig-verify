@@ -15,6 +15,8 @@ Why does this file exist, and why not put this in __main__?
   Also see (1) from http://click.pocoo.org/5/setuptools/#setuptools-integration
 """
 import argparse
+# set up path for everything else
+from ff_sig_verify.validate_moz_signature import check_exe
 
 
 parser = argparse.ArgumentParser(description='Command description.')
@@ -24,4 +26,6 @@ parser.add_argument('names', metavar='NAME', nargs=argparse.ZERO_OR_MORE,
 
 def main(args=None):
     args = parser.parse_args(args=args)
-    print(args.names)
+    flo = file(args.names[0], 'rb')
+    valid = check_exe(flo)
+    raise SystemExit(0 if valid else 1)

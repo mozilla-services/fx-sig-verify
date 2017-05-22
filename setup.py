@@ -23,7 +23,7 @@ def read(*names, **kwargs):
 
 
 setup(
-    name='ff-sig-verify',
+    name='ff_sig_verify',
     version='0.1.0',
     license='MPL',
     description='AWS Lambda to check code signatures.',
@@ -63,8 +63,16 @@ setup(
     keywords=[
         # eg: 'keyword1', 'keyword2', 'keyword3',
     ],
+    setup_requires=[  # "lambda-setuptools",
+                    "verify-sigs",
+                    ],
+
     install_requires=[
         # eg: 'aspectlib==1.1.1', 'six>=1.7',
+        "pyasn1",
+        "M2Crypto",
+        # verify-sigs is vendored in, so not listed here
+        # "verify-sigs",
     ],
     extras_require={
         # eg:
@@ -76,4 +84,9 @@ setup(
             'ff-sig-verify = ff_sig_verify.cli:main',
         ]
     },
+    dependency_links=[
+        "file:////tmp/ff-sig-verify/pip_downloads",
+        "https://github.com/hwine/verify-sigs/tarball/wip_hal#egg=verify_sigs=0.1.0",
+        ],
+    lambda_module="verify_sigs",
 )

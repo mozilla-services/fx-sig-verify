@@ -1,6 +1,5 @@
 appdirs
 boto3
-botocore
 docutils
 futures
 jmespath
@@ -9,4 +8,3 @@ pyparsing
 python-dateutil
 s3transfer
 six
-lambda-setuptools
