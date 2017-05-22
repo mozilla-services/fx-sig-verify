@@ -1,0 +1,14 @@
+# Do not copy over file we know to be platform specific
+src/lib
+
+# we want a clean build
+**/*.pyc
+**/*.pyo
+**/*.so
+dist
+build
+
+# Stuff not needed
+.tox
+venv
+mnt
