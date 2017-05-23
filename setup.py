@@ -64,7 +64,6 @@ setup(
         # eg: 'keyword1', 'keyword2', 'keyword3',
     ],
     setup_requires=[  # "lambda-setuptools",
-                    "verify-sigs",
                     ],
 
     install_requires=[
@@ -82,6 +81,7 @@ setup(
     entry_points={
         'console_scripts': [
             'ff-sig-verify = ff_sig_verify.cli:main',
+            'lambda_handler = ff_sig_verify.FF_Sig_Verify_Lambda:lambda_handler',
         ]
     },
     dependency_links=[

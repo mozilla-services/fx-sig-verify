@@ -3,13 +3,10 @@ import boto3
 from io import BytesIO
 import time
 
-import sys
-sys.path.insert(1, sys.path[0] + '/lib')
-print(repr(sys.path))
-
-import auth_data  # noqa: E402
-import fingerprint  # noqa: E402
-import pecoff_blob  # noqa: E402
+import ff_sig_verify  # noqa: W0611
+from verify_sigs import auth_data
+from verify_sigs import fingerprint
+from verify_sigs import pecoff_blob
 
 # Certificate serial numbers we consider valid
 VALID_CERTS = [
@@ -148,14 +145,6 @@ def get_s3_object(bucket_name, key_name):
     return obj
 
 
-def check_signature(exe):
-    file_len = exe.seek(0, 2)
-    exe.seek(0, 0)
-    msg = "checking {:d} bytes".format(file_len)
-    print(msg)
-    return check_exe(exe)
-
-
 def report_validity(key, valid):
     if valid:
         msg = "Signature on {} is good.".format(key)
@@ -171,21 +160,21 @@ def process_one_s3_file(record):
     key_name = record['s3']['object']['key']
     print('Processing {}/{}' .format(bucket_name, key_name))
     exe_file = get_s3_object(bucket_name, key_name)
-    valid_sig = check_signature(exe_file)
+    valid_sig = check_exe(exe_file)
     report_validity(key_name, valid_sig)
 
 
-def send_sns(msg, e=None):
+def send_sns(msg, e=None, reraise=False):
     # hack to get traceback in email
     if e:
         import traceback
-        msg += traceback.format_exe()
-    print("attempting to send '{}'".format(msg))
+        msg += traceback.format_exc()
+    # print("attempting to send '{}'".format(msg))
     client = boto3.client("sns")
-    response = client.publish(Message=msg,
+    response = client.publish(Message=msg,  # noqa: W0612
                               TopicArn="arn:aws:sns:us-west-2:927034868273:hwine-exe-bad")  # noqa: E501
-    print("response: '{}'".format(repr(response)))
-    raise
+    if reraise and e:
+        raise
 
 
 def lambda_handler(event, context):
@@ -204,9 +193,10 @@ def lambda_handler(event, context):
         else:
             # send SNS of good binary
             # probably should be controlled by environment variable
-            send_sns("pass")
+            send_sns("pass", reraise=False)
 
 if __name__ == '__main__':
+    import sys  # noqa: E402
     flo = open(sys.argv[1], 'rb')
     valid = check_exe(flo, True)
     print("file '{}' is {}".format(sys.argv[1], valid))

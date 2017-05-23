@@ -1,5 +1,6 @@
 # Do not copy over file we know to be platform specific
 src/lib
+**/*.egg-info
 
 # we want a clean build
 **/*.pyc
@@ -7,8 +8,10 @@ src/lib
 **/*.so
 dist
 build
+*.zip
 
 # Stuff not needed
 .tox
 venv
 mnt
+.git*

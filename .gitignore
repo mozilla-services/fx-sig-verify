@@ -116,3 +116,5 @@ pyvenv*/
 
 # per user place to keep stuff
 *_notes/
+*.exe
+*.zip
