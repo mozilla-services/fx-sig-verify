@@ -23,3 +23,8 @@ RUN pip install -t /tmp/ffsv .
 # zip up the result
 RUN cd /tmp/ffsv && zip -9r ../ffsv.zip .
 
+# now run some tests to ensure we got a good build
+COPY ./tests/data/32bit.exe .
+RUN pip install -e . && python -m ff_sig_verify 32bit.exe
+
+ENTRYPOINT ["bash"]
