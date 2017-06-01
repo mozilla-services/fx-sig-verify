@@ -5,6 +5,11 @@ __pycache__/
 
 # C extensions
 *.so
+# Docker image marker files
+Dockerfile.*.built
+# test files likely to be scattered
+*.exe
+*.zip
 
 # Distribution / packaging
 .Python
@@ -113,8 +118,3 @@ pyvenv*/
 .bootstrap
 .appveyor.token
 *.bak
-
-# per user place to keep stuff
-*_notes/
-*.exe
-*.zip

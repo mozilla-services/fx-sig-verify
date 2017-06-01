@@ -1,0 +1,12 @@
+FROM amazonlinux:latest
+
+WORKDIR /usr/src/app
+
+# get the tools we need
+RUN yum install -y python27-devel python27-pip gcc openssl-devel zip findutils
+RUN pip install --upgrade pip setuptools
+
+# Dev requirements
+COPY requirements-dev.txt ./
+RUN pip install -r requirements-dev.txt
+
