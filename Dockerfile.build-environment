@@ -1,4 +1,4 @@
-FROM ffsv/dev
+FROM fxsv/dev
 
 WORKDIR /usr/src/app
 
@@ -10,13 +10,13 @@ COPY . .
 RUN pip install -r requirements.txt -t src/lib
 
 # Cause everything to be compiled
-RUN pip install -t /tmp/ffsv .
+RUN pip install -t /tmp/fxsv .
 
 # zip up the result
-RUN cd /tmp/ffsv && zip -9r ../ffsv.zip .
+RUN cd /tmp/fxsv && zip -9r ../fxsv.zip .
 
 # now run some tests to ensure we got a good build
 COPY ./tests/data/32bit.exe .
-RUN pip install -e . && python -m ff_sig_verify 32bit.exe
+RUN pip install -e . && python -m fx_sig_verify 32bit.exe
 
 ENTRYPOINT ["bash"]

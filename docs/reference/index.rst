@@ -4,4 +4,4 @@ Reference
 .. toctree::
     :glob:
 
-    ff_sig_verify*
+    fx_sig_verify*

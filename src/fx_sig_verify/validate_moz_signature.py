@@ -3,7 +3,7 @@ import boto3
 from io import BytesIO
 import time
 
-import ff_sig_verify  # noqa: W0611
+import fx_sig_verify  # noqa: W0611
 from verify_sigs import auth_data
 from verify_sigs import fingerprint
 from verify_sigs import pecoff_blob

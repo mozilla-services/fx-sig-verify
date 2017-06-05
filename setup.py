@@ -23,7 +23,7 @@ def read(*names, **kwargs):
 
 
 setup(
-    name='ff_sig_verify',
+    name='fx_sig_verify',
     version='0.1.0',
     license='MPL',
     description='AWS Lambda to check code signatures.',
@@ -80,8 +80,8 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'ff-sig-verify = ff_sig_verify.cli:main',
-            'lambda_handler = ff_sig_verify.FF_Sig_Verify_Lambda:lambda_handler',
+            'ff-sig-verify = fx_sig_verify.cli:main',
+            'lambda_handler = fx_sig_verify.FF_Sig_Verify_Lambda:lambda_handler',
         ]
     },
     dependency_links=[

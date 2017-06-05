@@ -1,9 +1,9 @@
-ff_sig_verify
+fx_sig_verify
 =============
 
 .. testsetup::
 
-    from ff_sig_verify import *
+    from fx_sig_verify import *
 
-.. automodule:: ff_sig_verify
+.. automodule:: fx_sig_verify
     :members:

@@ -1,25 +1,17 @@
 
-DEV_IMAGE_NAME=ffsv/dev
-BUILD_IMAGE_NAME=ffsv/build
-INSTANCE_NAME=ffsv_latest
+DEV_IMAGE_NAME=fxsv/dev
+BUILD_IMAGE_NAME=fxsv/build
+INSTANCE_NAME=fxsv_latest
 
 # custom build
-ffsv.zip: Dockerfile.build-environment.built
+fxsv.zip: Dockerfile.build-environment.built
 
-ffsv.zip.old: Dockerfile
-	docker build -t $(BUILD_IMAGE_NAME) .
-	# get rid of anything old
-	docker rm $(INSTANCE_NAME) || true	# okay if fails
-	# retrieve the zip file
-	docker run --name $(INSTANCE_NAME) $(BUILD_IMAGE_NAME)
-	docker cp $(INSTANCE_NAME):/tmp/ffsv.zip .
-
-upload: ffsv.zip
-	aws lambda update-function-code --function-name hwine_ffsv_dev --zip-file fileb://$(PWD)/ffsv.zip
+upload: fxsv.zip
+	aws lambda update-function-code --function-name hwine_fxsv_dev --zip-file fileb://$(PWD)/fxsv.zip
 
 Dockerfile.dev-environment.built: Dockerfile.dev-environment
-	docker build -t $(USER):prestaged -f $< .
-	docker images $(USER):prestaged >$@
+	docker build -t $(DEV_IMAGE_NAME) -f $< .
+	docker images $(DEV_IMAGE_NAME) >$@
 	test -s $@ || rm $@
 
 Dockerfile.build-environment: Dockerfile.dev-environment.built
@@ -30,11 +22,10 @@ Dockerfile.build-environment.built: Dockerfile.build-environment
 	docker rm $(INSTANCE_NAME) || true	# okay if fails
 	# retrieve the zip file
 	docker run --name $(INSTANCE_NAME) $(BUILD_IMAGE_NAME)
-	docker cp $(INSTANCE_NAME):/tmp/ffsv.zip .
+	docker cp $(INSTANCE_NAME):/tmp/fxsv.zip .
 	docker ps -qa --filter name=$(INSTANCE_NAME) >$@
 	test -s $@ || rm $@
 
 .PHONY: Dockerfile.build-environment upload
 
 # vim: noet ts=8
-
