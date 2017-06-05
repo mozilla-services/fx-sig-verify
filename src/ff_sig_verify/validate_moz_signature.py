@@ -10,7 +10,7 @@ from verify_sigs import pecoff_blob
 
 # Certificate serial numbers we consider valid
 VALID_CERTS = [
-    13159122772063869363917814975931229904L,
+    13159122772063869363917814975931229904L,  # just one cert for all channels
 ]
 
 
