@@ -7,3 +7,9 @@ fx_sig_verify
 
 .. automodule:: fx_sig_verify
     :members:
+
+.. automodule:: ff_sig_verify.validate_moz_signature
+    :members: lambda_handler
+
+.. automodule:: ff_sig_verify.cli
+    :members:

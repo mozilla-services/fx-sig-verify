@@ -64,6 +64,7 @@ setup(
         # eg: 'keyword1', 'keyword2', 'keyword3',
     ],
     setup_requires=[  # "lambda-setuptools",
+                    "boto3",
                     ],
 
     install_requires=[

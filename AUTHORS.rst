@@ -2,4 +2,4 @@
 Authors
 =======
 
-* Hal Wine - https://mozilla.org
+* Hal Wine - https://www.mozilla.org
