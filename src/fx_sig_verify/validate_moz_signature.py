@@ -14,6 +14,9 @@ VALID_CERTS = [
     13159122772063869363917814975931229904L,  # just one cert for all channels
 ]
 
+# simplify debugging - can be set via environ
+verbose = False
+
 
 # TODO Add proper attribution for code below, and/or move to module
 
@@ -30,8 +33,13 @@ del F, univ
 # EVIL EVIL
 
 
-def check_exe(objf, verbose=False):
+def check_exe(objf):
 
+    if verbose:
+        cur_pos = objf.seek(0, 1)
+        len_ = objf.seek(0, 2)
+        objf.seek(0, 0)
+        print("Processing file of size {} (at {})".format(len_, cur_pos))
     try:
         fingerprinter = fingerprint.Fingerprinter(objf)
         is_pecoff = fingerprinter.EvalPecoff()
@@ -138,7 +146,8 @@ def report_validity(key, valid):
 def process_one_s3_file(record):
     bucket_name = record['s3']['bucket']['name']
     key_name = record['s3']['object']['key']
-    print('Processing {}/{}' .format(bucket_name, key_name))
+    if verbose:
+        print('Processing {}/{}' .format(bucket_name, key_name))
     exe_file = get_s3_object(bucket_name, key_name)
     valid_sig = check_exe(exe_file)
     report_validity(key_name, valid_sig)
@@ -153,6 +162,8 @@ def send_sns(msg, e=None, reraise=False):
     # keep a global to prevent infinite recursion on arn error
     global topic_arn
     topic_arn = os.environ.get('SNSARN', "")
+    if verbose:
+        print("snsarn: {}".format(topic_arn))
     if not topic_arn:
         # bad config, we expected this in the environ
         # set flag so we don't re-raise
@@ -164,6 +175,11 @@ def send_sns(msg, e=None, reraise=False):
 
 
 def lambda_handler(event, context):
+    verbose_override = os.environ.get('VERBOSE')
+    if verbose_override:
+        global verbose
+        verbose = verbose_override
+        print("verbose {} based on {}".format(verbose, verbose_override))
     for record in event['Records']:
         try:
             process_one_s3_file(record)

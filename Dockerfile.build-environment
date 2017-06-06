@@ -13,10 +13,12 @@ RUN pip install -r requirements.txt -t src/lib
 RUN pip install -t /tmp/fxsv .
 
 # zip up the result
+RUN date
 RUN cd /tmp/fxsv && zip -9r ../fxsv.zip .
+RUN date ; ls -l /tmp/ ; md5sum /tmp/fxsv.zip
 
 # now run some tests to ensure we got a good build
 COPY ./tests/data/32bit.exe .
 RUN pip install -e . && python -m fx_sig_verify 32bit.exe
 
-ENTRYPOINT ["bash"]
+#ENTRYPOINT ["bash"]

@@ -22,7 +22,11 @@ Dockerfile.build-environment.built: Dockerfile.build-environment
 	docker rm $(INSTANCE_NAME) || true	# okay if fails
 	# retrieve the zip file
 	docker run --name $(INSTANCE_NAME) $(BUILD_IMAGE_NAME)
+	# delete old version, if any
+	rm -f fxsv.zip
 	docker cp $(INSTANCE_NAME):/tmp/fxsv.zip .
+	# docker's host (VM) likely to have wrong time (on macOS). Update it
+	touch fxsv.zip
 	docker ps -qa --filter name=$(INSTANCE_NAME) >$@
 	test -s $@ || rm $@
 
