@@ -1,6 +1,6 @@
 
 import pytest
-from ff_sig_verify.cli import main
+from fx_sig_verify.cli import main
 
 
 def test_main():

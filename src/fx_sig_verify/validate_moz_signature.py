@@ -1,6 +1,7 @@
 from __future__ import print_function
 import boto3
 from io import BytesIO
+import os
 import time
 
 import fx_sig_verify  # noqa: W0611
@@ -29,18 +30,6 @@ del F, univ
 # EVIL EVIL
 
 
-def print_hashes(results):
-    pass
-
-
-def print_pecoff_hashes(results):
-    pass
-
-
-def print_certificates(auth):
-    pass
-
-
 def check_exe(objf, verbose=False):
 
     try:
@@ -51,16 +40,10 @@ def check_exe(objf, verbose=False):
     finally:
         objf.close()
 
-    if verbose:
-        print_hashes(results)
-
     if not is_pecoff:
         msg = 'This is not a PE/COFF binary. Exiting.'
         print(msg)
         raise SigVerifyBadSignature(msg)
-
-    if verbose:
-        print_pecoff_hashes(results)
 
     signed_pecoffs = [x for x in results if x['name'] == 'pecoff' and
                       'SignedData' in x]
@@ -103,9 +86,6 @@ def check_exe(objf, verbose=False):
 
     # TODO - validate if this is okay for now.
     # base validity on some combo of auth fields.
-
-    if verbose:
-        print_certificates(auth)
 
     # signing_cert_id is a tuple with a last element being the serial number of
     # the certificate. That is a known quantity for our products.
@@ -169,10 +149,16 @@ def send_sns(msg, e=None, reraise=False):
     if e:
         import traceback
         msg += traceback.format_exc()
-    # print("attempting to send '{}'".format(msg))
     client = boto3.client("sns")
-    response = client.publish(Message=msg,  # noqa: W0612
-                              TopicArn="arn:aws:sns:us-west-2:927034868273:hwine-exe-bad")  # noqa: E501
+    # keep a global to prevent infinite recursion on arn error
+    global topic_arn
+    topic_arn = os.environ.get('SNSARN', "")
+    if not topic_arn:
+        # bad config, we expected this in the environ
+        # set flag so we don't re-raise
+        topic_arn = "no-topic-arn"
+        raise KeyError("Missing 'SNSARN' from environment")
+    response = client.publish(Message=msg, TopicArn=topic_arn)  # noqa: W0612
     if reraise and e:
         raise
 
