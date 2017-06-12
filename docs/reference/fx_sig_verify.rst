@@ -9,10 +9,14 @@ fx_sig_verify
 
        ``fx_sig_verify`` is the package containing the tools
 
+validate_moz_signature
+----------------------
+
 .. automodule:: fx_sig_verify.validate_moz_signature
    :members:
-   :undoc-members:
+
+cli
+---
 
 .. automodule:: fx_sig_verify.cli
    :members:
-   :undoc-members:

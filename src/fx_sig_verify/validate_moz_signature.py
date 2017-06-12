@@ -34,7 +34,18 @@ del F, univ
 
 
 def check_exe(objf):
+    """
+    Determine if the contents of `objf` are a valid Windows executable signed by
+    Mozilla's Authenticode certificate.
 
+    :param objf: a file like object containing the bits to check. The object
+        must support a seek() method. The object is never written to.
+
+    :returns boolean: True if object has passed all tests.
+
+    :raises SigVerifyException: if any specific problem is identified in the
+        object
+    """
     if verbose:
         cur_pos = objf.seek(0, 1)
         len_ = objf.seek(0, 2)
@@ -107,14 +118,25 @@ MAX_EXE_SIZE = 100 * (1024 * 1024)  # 100MB
 
 
 class SigVerifyException(Exception):
+    """
+    Catchall for any signature problem found. More specific issues are
+    subclasses of SigVerifyException
+    """
     pass
 
 
 class SigVerifyTooBig(SigVerifyException):
+    """
+    The binary to test is bigger than we expect. This is primarily a test to
+    avoid a DoS of this service.
+    """
     pass
 
 
 class SigVerifyBadSignature(SigVerifyException):
+    """
+    The signature is not valid or not from Mozilla.
+    """
     pass
 
 s3 = boto3.resource('s3')
@@ -175,6 +197,17 @@ def send_sns(msg, e=None, reraise=False):
 
 
 def lambda_handler(event, context):
+    """
+    The main entry point when this package is installed as an AWS Lambda
+    Function.
+
+    The determination of validity is always recorded via AWS SNS.
+
+    :param event: a JSON formatted string as described in the AWS Documentation
+    :param context: an AWS data structure we do not use.
+
+    :returns None: the S3 event API does not expect any result.
+    """
     verbose_override = os.environ.get('VERBOSE')
     if verbose_override:
         global verbose
