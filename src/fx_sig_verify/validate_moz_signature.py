@@ -14,13 +14,16 @@ VALID_CERTS = [
     13159122772063869363917814975931229904L,  # just one cert for all channels
 ]
 
+# We will reject any file larger than this to avoid DoS.
+MAX_EXE_SIZE = 100 * (1024 * 1024)  # 100MB
+
 # simplify debugging - can be set via environ
 verbose = False
 
 
-# TODO Add proper attribution for code below, and/or move to module
-
 # EVIL EVIL -- Monkeypatch to extend accessor
+# This patch is part of the google code, and must be set before calling any of
+# the analysis routines. See the verify_sigs directory for license information.
 # TODO(user): This was submitted to pyasn1. Remove when we have it back.
 def F(self, idx):
     if type(idx) is int:
@@ -31,6 +34,31 @@ from pyasn1.type import univ  # noqa: E402 pylint: disable-msg=C6204,C6203
 univ.SequenceAndSetBase.__getitem__ = F
 del F, univ
 # EVIL EVIL
+
+
+class SigVerifyException(Exception):
+    """
+    Catchall for any signature problem found. More specific issues are
+    subclasses of SigVerifyException
+    """
+    pass
+
+
+class SigVerifyTooBig(SigVerifyException):
+    """
+    The binary to test is bigger than we expect. This is primarily a test to
+    avoid a DoS of this service.
+    """
+    pass
+
+
+class SigVerifyBadSignature(SigVerifyException):
+    """
+    The signature is not valid or not from Mozilla.
+    """
+    pass
+
+s3 = boto3.resource('s3')
 
 
 def check_exe(objf):
@@ -113,33 +141,6 @@ def check_exe(objf):
                        (cert_serial_number in VALID_CERTS)
                        )
     return valid_signature
-
-MAX_EXE_SIZE = 100 * (1024 * 1024)  # 100MB
-
-
-class SigVerifyException(Exception):
-    """
-    Catchall for any signature problem found. More specific issues are
-    subclasses of SigVerifyException
-    """
-    pass
-
-
-class SigVerifyTooBig(SigVerifyException):
-    """
-    The binary to test is bigger than we expect. This is primarily a test to
-    avoid a DoS of this service.
-    """
-    pass
-
-
-class SigVerifyBadSignature(SigVerifyException):
-    """
-    The signature is not valid or not from Mozilla.
-    """
-    pass
-
-s3 = boto3.resource('s3')
 
 
 def get_s3_object(bucket_name, key_name):
