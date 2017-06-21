@@ -7,14 +7,18 @@ INSTANCE_NAME=fxsv_latest
 fxsv.zip: Dockerfile.build-environment.built
 
 upload: fxsv.zip
-	aws lambda update-function-code --function-name hwine_fxsv_dev --zip-file fileb://$(PWD)/fxsv.zip
+	aws lambda update-function-code --function-name hwine_ffsv_dev --zip-file fileb://$(PWD)/fxsv.zip
+
+invoke:
+	aws lambda invoke --function-name hwine_ffsv_dev --payload "$$(cat tests/data/S3_event_template.json)" test_output.json ; jq . test_output.json
 
 Dockerfile.dev-environment.built: Dockerfile.dev-environment
 	docker build -t $(DEV_IMAGE_NAME) -f $< .
 	docker images $(DEV_IMAGE_NAME) >$@
 	test -s $@ || rm $@
 
-Dockerfile.build-environment: Dockerfile.dev-environment.built
+Dockerfile.build-environment: Dockerfile.dev-environment.built $(shell find . -name \*.py)
+	touch $@
 
 Dockerfile.build-environment.built: Dockerfile.build-environment
 	docker build -t $(BUILD_IMAGE_NAME) -f $< .
@@ -30,6 +34,6 @@ Dockerfile.build-environment.built: Dockerfile.build-environment
 	docker ps -qa --filter name=$(INSTANCE_NAME) >$@
 	test -s $@ || rm $@
 
-.PHONY: Dockerfile.build-environment upload
+.PHONY: upload invoke
 
 # vim: noet ts=8

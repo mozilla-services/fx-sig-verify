@@ -171,8 +171,16 @@ def process_one_s3_file(record):
     key_name = record['s3']['object']['key']
     if verbose:
         print('Processing {}/{}' .format(bucket_name, key_name))
-    exe_file = get_s3_object(bucket_name, key_name)
-    valid_sig = check_exe(exe_file)
+    try:
+        exe_file = get_s3_object(bucket_name, key_name)
+    except Exception as e:
+        raise SigVerifyException("failed to get s3 object {}/{} '{}'"
+                                 .format(bucket_name, key_name, repr(e)))
+    try:
+        valid_sig = check_exe(exe_file)
+    except Exception as e:
+        raise SigVerifyException("failed to process s3 object {}/{} '{}'"
+                                 .format(bucket_name, key_name), repr(e))
     report_validity(key_name, valid_sig)
 
 
@@ -212,24 +220,43 @@ def lambda_handler(event, context):
     verbose_override = os.environ.get('VERBOSE')
     if verbose_override:
         global verbose
-        verbose = verbose_override
+        verbose = bool(verbose_override)
         print("verbose {} based on {}".format(verbose, verbose_override))
+    results = []
     for record in event['Records']:
+        msgs = []
         try:
-            process_one_s3_file(record)
-        except SigVerifyBadSignature as e:
-            # send SNS of bad binary uploaded
-            send_sns("bad sig", e)
-        except (SigVerifyTooBig, SigVerifyException) as e:
-            # send SNS of program failure
-            send_sns("data failure", e)
+            try:
+                result = {}
+                process_one_s3_file(record)
+            except SigVerifyBadSignature as e:
+                # send SNS of bad binary uploaded
+                msg = "bad sig"
+                send_sns(msg, e)
+            except (SigVerifyTooBig, SigVerifyException) as e:
+                # send SNS of program failure
+                msg = "data failure"
+                send_sns(msg, e)
+            except (Exception) as e:
+                # uncaught by me program failure
+                msg = "app failure"
+                send_sns(msg, e)
+            else:
+                # send SNS of good binary
+                # probably should be controlled by environment variable
+                msg = "pass"
+                send_sns(msg, reraise=False)
         except (Exception) as e:
-            # uncaught by me program failure
-            send_sns("app failure", e)
-        else:
-            # send SNS of good binary
-            # probably should be controlled by environment variable
-            send_sns("pass", reraise=False)
+            # double exception, should already have a message
+            msgs.append("app failure: {}".format(str(e)))
+        finally:
+            result['bucket'] = record['s3']['bucket']['name']
+            result['key'] = record['s3']['object']['key']
+            msgs.append(msg)
+            result['result'] = msgs
+            results.append(result)
+    print(results)
+    return results
 
 if __name__ == '__main__':
     import sys  # noqa: E402
