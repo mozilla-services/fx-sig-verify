@@ -33,7 +33,7 @@ setup(
     ),
     author='Hal Wine',
     author_email='hwine@mozilla.com',
-    url='https://github.com/hwine/ff-sig-verify',
+    url='https://github.com/hwine/fx-sig-verify',
     packages=find_packages('src'),
     package_dir={'': 'src'},
     py_modules=[splitext(basename(path))[0] for path in glob('src/*.py')],
@@ -81,12 +81,12 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'ff-sig-verify = fx_sig_verify.cli:main',
+            'fx-sig-verify = fx_sig_verify.cli:main',
             'lambda_handler = fx_sig_verify.FF_Sig_Verify_Lambda:lambda_handler',
         ]
     },
     dependency_links=[
-        "file:////tmp/ff-sig-verify/pip_downloads",
+        "file:////tmp/fx-sig-verify/pip_downloads",
         "https://github.com/hwine/verify-sigs/tarball/wip_hal#egg=verify_sigs=0.1.0",
         ],
     lambda_module="verify_sigs",

@@ -8,7 +8,7 @@ little bit helps, and credit will always be given.
 Bug reports
 ===========
 
-When `reporting a bug <https://github.com/hwine/ff-sig-verify/issues>`_ please include:
+When `reporting a bug <https://github.com/hwine/fx-sig-verify/issues>`_ please include:
 
     * Your operating system name and version.
     * Any details about your local setup that might be helpful in troubleshooting.
@@ -17,14 +17,14 @@ When `reporting a bug <https://github.com/hwine/ff-sig-verify/issues>`_ please i
 Documentation improvements
 ==========================
 
-ff-sig-verify could always use more documentation, whether as part of the
-official ff-sig-verify docs, in docstrings, or even on the web in blog posts,
+fx-sig-verify could always use more documentation, whether as part of the
+official fx-sig-verify docs, in docstrings, or even on the web in blog posts,
 articles, and such.
 
 Feature requests and feedback
 =============================
 
-The best way to send feedback is to file an issue at https://github.com/hwine/ff-sig-verify/issues.
+The best way to send feedback is to file an issue at https://github.com/hwine/fx-sig-verify/issues.
 
 If you are proposing a feature:
 
@@ -35,13 +35,13 @@ If you are proposing a feature:
 Development
 ===========
 
-To set up `ff-sig-verify` for local development:
+To set up `fx-sig-verify` for local development:
 
-1. Fork `ff-sig-verify <https://github.com/hwine/ff-sig-verify>`_
+1. Fork `fx-sig-verify <https://github.com/hwine/fx-sig-verify>`_
    (look for the "Fork" button).
 2. Clone your fork locally::
 
-    git clone git@github.com:your_name_here/ff-sig-verify.git
+    git clone git@github.com:your_name_here/fx-sig-verify.git
 
 3. Create a branch for local development::
 
@@ -74,7 +74,7 @@ For merging, you should:
 4. Add yourself to ``AUTHORS.rst``.
 
 .. [1] If you don't have all the necessary python versions available locally you can rely on Travis - it will
-       `run the tests <https://travis-ci.org/hwine/ff-sig-verify/pull_requests>`_ for each change you add in the pull request.
+       `run the tests <https://travis-ci.org/hwine/fx-sig-verify/pull_requests>`_ for each change you add in the pull request.
 
        It will be slower though ...
 

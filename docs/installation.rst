@@ -4,4 +4,4 @@ Installation
 
 At the command line::
 
-    pip install ff-sig-verify
+    pip install fx-sig-verify

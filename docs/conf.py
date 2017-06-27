@@ -22,7 +22,7 @@ if os.getenv('SPELLCHECK'):
 
 source_suffix = '.rst'
 master_doc = 'index'
-project = 'ff-sig-verify'
+project = 'fx-sig-verify'
 year = '2017'
 author = 'Hal Wine'
 copyright = '{0}, {1}'.format(year, author)
@@ -31,8 +31,8 @@ version = release = '0.1.0'
 pygments_style = 'trac'
 templates_path = ['.']
 extlinks = {
-    'issue': ('https://github.com/hwine/ff-sig-verify/issues/%s', '#'),
-    'pr': ('https://github.com/hwine/ff-sig-verify/pull/%s', 'PR #'),
+    'issue': ('https://github.com/hwine/fx-sig-verify/issues/%s', '#'),
+    'pr': ('https://github.com/hwine/fx-sig-verify/pull/%s', 'PR #'),
 }
 # on_rtd is whether we are on readthedocs.org
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
