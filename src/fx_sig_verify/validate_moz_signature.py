@@ -4,7 +4,7 @@ from io import BytesIO
 import os
 import time
 
-import fx_sig_verify  # noqa: W0611
+import fx_sig_verify
 from verify_sigs import auth_data
 from verify_sigs import fingerprint
 from verify_sigs import pecoff_blob
@@ -47,7 +47,22 @@ class SigVerifyException(Exception):
 class SigVerifyTooBig(SigVerifyException):
     """
     The binary to test is bigger than we expect. This is primarily a test to
-    avoid a DoS of this service.
+    avoid a DoS of this service. However, since we only expect to be called for
+    valid executables, this is still an anomaly.
+    """
+    pass
+
+
+class SigVerifyNonMozSignature(SigVerifyException):
+    """
+    An valid signed ".exe" file, but not signed by Mozilla.
+    """
+    pass
+
+
+class SigVerifyNoSignature(SigVerifyException):
+    """
+    An unsigned ".exe" file.
     """
     pass
 
@@ -84,20 +99,22 @@ def check_exe(objf):
         is_pecoff = fingerprinter.EvalPecoff()
         fingerprinter.EvalGeneric()
         results = fingerprinter.HashIt()
+    except Exception as e:
+        raise SigVerifyNoSignature(e)
     finally:
         objf.close()
 
     if not is_pecoff:
         msg = 'This is not a PE/COFF binary. Exiting.'
         print(msg)
-        raise SigVerifyBadSignature(msg)
+        raise SigVerifyNoSignature(msg)
 
     signed_pecoffs = [x for x in results if x['name'] == 'pecoff' and
                       'SignedData' in x]
 
     if not signed_pecoffs:
-        raise auth_data.Asn1Error('This PE/COFF binary has no signature. '
-                                  'Exiting.')
+        raise SigVerifyNoSignature('This PE/COFF binary has no signature. '
+                                   'Exiting.')
 
     # TODO - can there be multiple signed_pecoffs?
     signed_pecoff = signed_pecoffs[0]
@@ -114,6 +131,7 @@ def check_exe(objf):
     if verbose and len(signed_datas) > 1:
         print("Found {:d} signed datas. Only processing first "
               "one.".format(len(signed_datas)))
+        raise SigVerifyBadSignature("Multiple Signatures")
 
     blob = pecoff_blob.PecoffBlob(signed_data)
 
@@ -179,8 +197,11 @@ def process_one_s3_file(record):
     try:
         valid_sig = check_exe(exe_file)
     except Exception as e:
-        raise SigVerifyException("failed to process s3 object {}/{} '{}'"
-                                 .format(bucket_name, key_name), repr(e))
+        if isinstance(e, SigVerifyException):
+            raise e
+        else:
+            raise SigVerifyException("failed to process s3 object {}/{} '{}'"
+                                     .format(bucket_name, key_name), repr(e))
     report_validity(key_name, valid_sig)
 
 
@@ -222,20 +243,29 @@ def lambda_handler(event, context):
         global verbose
         verbose = bool(verbose_override)
         print("verbose {} based on {}".format(verbose, verbose_override))
-    results = []
+    results = [{'version': fx_sig_verify.__version__}]
     for record in event['Records']:
         msgs = []
         try:
             try:
                 result = {}
                 process_one_s3_file(record)
+            except SigVerifyNonMozSignature as e:
+                msg = "non-moz signature"
+                send_sns(msg, e)
+            except SigVerifyTooBig as e:
+                # send SNS of program failure
+                msg = "data failure"
+                send_sns(msg, e)
+            except SigVerifyNoSignature as e:
+                msg = "exe without sig"
+                send_sns(msg, e)
             except SigVerifyBadSignature as e:
                 # send SNS of bad binary uploaded
                 msg = "bad sig"
                 send_sns(msg, e)
-            except (SigVerifyTooBig, SigVerifyException) as e:
-                # send SNS of program failure
-                msg = "data failure"
+            except SigVerifyException as e:
+                msg = "unclassified error"
                 send_sns(msg, e)
             except (Exception) as e:
                 # uncaught by me program failure
