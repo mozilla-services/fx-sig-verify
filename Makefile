@@ -10,6 +10,7 @@ upload: fxsv.zip
 	aws lambda update-function-code --function-name hwine_ffsv_dev --zip-file fileb://$(PWD)/fxsv.zip
 
 invoke:
+	@rm -f test_output.json
 	aws lambda invoke --function-name hwine_ffsv_dev --payload "$$(cat tests/data/S3_event_template.json)" test_output.json ; jq . test_output.json
 
 Dockerfile.dev-environment.built: Dockerfile.dev-environment

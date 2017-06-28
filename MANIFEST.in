@@ -18,5 +18,6 @@ include README.rst
 
 include tox.ini .travis.yml appveyor.yml
 include requirements*.txt
+include Makefile Dockerfile.build-environment Dockerfile.dev-environment .dockerignore
 
 global-exclude *.py[cod] __pycache__ *.so *.dylib
