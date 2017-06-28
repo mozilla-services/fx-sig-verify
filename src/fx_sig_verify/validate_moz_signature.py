@@ -243,9 +243,10 @@ def lambda_handler(event, context):
                 send_sns(msg, e)
             else:
                 # send SNS of good binary
-                # probably should be controlled by environment variable
                 msg = "pass"
-                send_sns(msg, reraise=False)
+                if verbose:
+                    # controlled by environment variable
+                    send_sns(msg, reraise=False)
         except (Exception) as e:
             # double exception, should already have a message
             msgs.append("app failure: {}".format(str(e)))
