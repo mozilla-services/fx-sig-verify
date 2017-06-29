@@ -9,8 +9,9 @@ Layout based on https://github.com/ionelmc/cookiecutter-pylibrary
 """
 import argparse
 # set up path for everything else
-from fx_sig_verify.validate_moz_signature import check_exe
-
+from fx_sig_verify.validate_moz_signature import (check_exe, report_validity,
+                                                  SigVerifyException,
+                                                  set_verbose)
 
 # TODO(hwine@mozilla.com): provide real command line args.
 parser = argparse.ArgumentParser(description='Command description.')
@@ -26,7 +27,13 @@ def main(args=None):
     :param filename: path to ``exe`` file
     :returns result_code: 0 if no failure, per unix conventions
     """
+    set_verbose(True)
     args = parser.parse_args(args=args)
     flo = file(args.names[0], 'rb')
-    valid = check_exe(flo)
+    try:
+        valid = check_exe(flo)
+        report_validity(args.names[0], valid)
+    except SigVerifyException:
+        valid = False
+        pass
     raise SystemExit(0 if valid else 1)

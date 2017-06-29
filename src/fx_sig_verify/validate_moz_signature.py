@@ -90,8 +90,9 @@ def check_exe(objf):
         object
     """
     if verbose:
-        cur_pos = objf.seek(0, 1)
-        len_ = objf.seek(0, 2)
+        cur_pos = objf.tell()
+        objf.seek(0, 2)
+        len_ = objf.tell()
         objf.seek(0, 0)
         print("Processing file of size {} (at {})".format(len_, cur_pos))
     try:
@@ -158,6 +159,8 @@ def check_exe(objf):
     valid_signature = (auth.has_countersignature and
                        (cert_serial_number in VALID_CERTS)
                        )
+    if not valid_signature:
+        raise SigVerifyNonMozSignature
     return valid_signature
 
 
@@ -226,6 +229,17 @@ def send_sns(msg, e=None, reraise=False):
         raise
 
 
+def set_verbose(value=None):
+    global verbose
+    if value is not None:
+        verbose = value
+    else:
+        verbose_override = os.environ.get('VERBOSE')
+        if verbose_override:
+            verbose = bool(verbose_override)
+            print("verbose {} based on {}".format(verbose, verbose_override))
+
+
 def lambda_handler(event, context):
     """
     The main entry point when this package is installed as an AWS Lambda
@@ -238,11 +252,7 @@ def lambda_handler(event, context):
 
     :returns None: the S3 event API does not expect any result.
     """
-    verbose_override = os.environ.get('VERBOSE')
-    if verbose_override:
-        global verbose
-        verbose = bool(verbose_override)
-        print("verbose {} based on {}".format(verbose, verbose_override))
+    set_verbose()
     results = [{'version': fx_sig_verify.__version__}]
     for record in event['Records']:
         msgs = []
