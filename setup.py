@@ -71,6 +71,7 @@ setup(
         # eg: 'aspectlib==1.1.1', 'six>=1.7',
         "pyasn1",
         "M2Crypto",
+        "fleece",
         # verify-sigs is vendored in, so not listed here
         # "verify-sigs",
     ],

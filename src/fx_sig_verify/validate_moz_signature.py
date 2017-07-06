@@ -1,5 +1,8 @@
 from __future__ import print_function
-import boto3
+from fleece import boto3
+from fleece.xray import (monkey_patch_botocore_for_xray,
+                         trace_xray_subsegment)
+# import boto3
 from io import BytesIO
 import os
 import datetime
@@ -20,6 +23,9 @@ MAX_EXE_SIZE = 100 * (1024 * 1024)  # 100MB
 
 # simplify debugging - can be set via environ
 verbose = 0
+
+# by default wrap all boto calls with x-ray
+monkey_patch_botocore_for_xray()
 
 
 def debug(*args):
@@ -84,6 +90,7 @@ class SigVerifyBadSignature(SigVerifyException):
 s3 = boto3.resource('s3')
 
 
+@trace_xray_subsegment()
 def check_exe(objf):
     """
     Determine if the contents of `objf` are a valid Windows executable signed by
@@ -169,6 +176,7 @@ def check_exe(objf):
     return valid_signature
 
 
+@trace_xray_subsegment()
 def get_s3_object(bucket_name, key_name):
     debug("in get_s3_object")
     s3_object = s3.Object(bucket_name, key_name)
@@ -188,6 +196,7 @@ def get_s3_object(bucket_name, key_name):
     return obj
 
 
+@trace_xray_subsegment()
 def report_validity(key, valid):
     if valid:
         msg = "Signature on {} is good.".format(key)
@@ -198,6 +207,7 @@ def report_validity(key, valid):
         raise SigVerifyBadSignature(msg)
 
 
+@trace_xray_subsegment()
 def process_one_s3_file(record):
     bucket_name = record['s3']['bucket']['name']
     key_name = record['s3']['object']['key']
@@ -219,6 +229,7 @@ def process_one_s3_file(record):
     report_validity(key_name, valid_sig)
 
 
+@trace_xray_subsegment()
 def send_sns(msg, e=None, reraise=False):
     # hack to get traceback in email
     if e:
@@ -251,6 +262,7 @@ def set_verbose():
         print("verbose {} based on {}".format(verbose, verbose_override))
 
 
+@trace_xray_subsegment()
 def lambda_handler(event, context):
     """
     The main entry point when this package is installed as an AWS Lambda
