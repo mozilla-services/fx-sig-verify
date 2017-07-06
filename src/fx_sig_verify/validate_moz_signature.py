@@ -2,6 +2,7 @@ from __future__ import print_function
 import boto3
 from io import BytesIO
 import os
+import datetime
 import time
 
 import fx_sig_verify
@@ -18,7 +19,14 @@ VALID_CERTS = [
 MAX_EXE_SIZE = 100 * (1024 * 1024)  # 100MB
 
 # simplify debugging - can be set via environ
-verbose = False
+verbose = 0
+
+
+def debug(*args):
+    if verbose >= 2:
+        now = datetime.datetime.utcnow().isoformat()
+        for msg in args:
+            print("{}: {}".format(now, msg))
 
 
 # EVIL EVIL -- Monkeypatch to extend accessor
@@ -162,15 +170,21 @@ def check_exe(objf):
 
 
 def get_s3_object(bucket_name, key_name):
+    debug("in get_s3_object")
     s3_object = s3.Object(bucket_name, key_name)
+    debug("after s3.Object() {}/{} s3_object={}".format(bucket_name, key_name,
+                                                        type(s3_object)))
     result = s3_object.get()
+    debug("after s3_object.get() result={}".format(type(result)))
     if result['ContentLength'] > MAX_EXE_SIZE:
         msg = """Too big: {}/{} {}
                 ({})""".format(bucket_name, key_name, result['ContentLength'],
                                repr(result))
         print(msg)
         raise SigVerifyTooBig(msg)
+    debug("before body read")
     obj = BytesIO(result['Body'].read())
+    debug("after read() obj={}".format(type(obj)))
     return obj
 
 
@@ -226,6 +240,17 @@ def send_sns(msg, e=None, reraise=False):
         raise
 
 
+def set_verbose():
+    verbose_override = os.environ.get('VERBOSE')
+    if verbose_override:
+        global verbose
+        try:
+            verbose = int(verbose_override)
+        except ValueError:
+            verbose = 1 if verbose_override else 0
+        print("verbose {} based on {}".format(verbose, verbose_override))
+
+
 def lambda_handler(event, context):
     """
     The main entry point when this package is installed as an AWS Lambda
@@ -238,11 +263,7 @@ def lambda_handler(event, context):
 
     :returns None: the S3 event API does not expect any result.
     """
-    verbose_override = os.environ.get('VERBOSE')
-    if verbose_override:
-        global verbose
-        verbose = bool(verbose_override)
-        print("verbose {} based on {}".format(verbose, verbose_override))
+    set_verbose()
     results = [{'version': fx_sig_verify.__version__}]
     for record in event['Records']:
         msgs = []
