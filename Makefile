@@ -8,7 +8,16 @@ fxsv.zip: Dockerfile.build-environment.built
 
 .PHONY: upload
 upload: fxsv.zip
-	aws lambda update-function-code --function-name hwine_ffsv_dev --zip-file fileb://$(PWD)/fxsv.zip
+	aws lambda update-function-code \
+	    --function-name hwine_ffsv_dev \
+	    --zip-file fileb://$(PWD)/fxsv.zip \
+	    --publish
+
+publish: upload
+	aws lambda publish-version \
+	    --function-name hwine_ffsv_dev \
+	    --code-sha-256 "$$(openssl sha1 -binary -sha256 fxsv.zip | base64 | tee /dev/tty)" \
+	    --description "$$(date -u +%Y%m%dT%H%M%S)" \
 
 .PHONY: invoke
 invoke:

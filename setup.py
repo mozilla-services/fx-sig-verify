@@ -83,7 +83,6 @@ setup(
     entry_points={
         'console_scripts': [
             'fx-sig-verify = fx_sig_verify.cli:main',
-            'lambda_handler = fx_sig_verify.FF_Sig_Verify_Lambda:lambda_handler',
         ]
     },
     dependency_links=[

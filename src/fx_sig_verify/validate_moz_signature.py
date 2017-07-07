@@ -251,8 +251,9 @@ def send_sns(msg, e=None, reraise=False):
         raise
 
 
-def set_verbose():
-    verbose_override = os.environ.get('VERBOSE')
+def set_verbose(verbose_override=None):
+    if not verbose_override:
+        verbose_override = os.environ.get('VERBOSE')
     if verbose_override:
         global verbose
         try:
@@ -317,6 +318,7 @@ def lambda_handler(event, context):
             result['bucket'] = record['s3']['bucket']['name']
             result['key'] = record['s3']['object']['key']
             msgs.append(msg)
+            msgs.append("is this #14?")
             result['result'] = msgs
             results.append(result)
     print(results)
