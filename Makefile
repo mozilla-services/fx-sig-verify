@@ -6,12 +6,34 @@ INSTANCE_NAME=fxsv_latest
 # custom build
 fxsv.zip: Dockerfile.build-environment.built
 
+.PHONY: upload
 upload: fxsv.zip
-	aws lambda update-function-code --function-name hwine_ffsv_dev --zip-file fileb://$(PWD)/fxsv.zip
+	aws lambda update-function-code \
+	    --function-name hwine_ffsv_dev \
+	    --zip-file fileb://$(PWD)/fxsv.zip \
+	    --publish
 
+publish: upload
+	aws lambda publish-version \
+	    --function-name hwine_ffsv_dev \
+	    --code-sha-256 "$$(openssl sha1 -binary -sha256 fxsv.zip | base64 | tee /dev/tty)" \
+	    --description "$$(date -u +%Y%m%dT%H%M%S)" \
+
+.PHONY: invoke
 invoke:
 	@rm -f test_output.json
 	aws lambda invoke --function-name hwine_ffsv_dev --payload "$$(cat tests/data/S3_event_template.json)" test_output.json ; jq . test_output.json
+
+# idea from
+# https://stackoverflow.com/questions/23032580/reinstall-virtualenv-with-tox-when-requirements-txt-or-setup-py-changes#23039826
+.PHONY: tests
+tests: .tox/venv.touch
+	tox $(REBUILD_FLAG)
+
+.tox/venv.touch: setup.py requirements.txt
+	$(eval REBUILD_FLAG := --recreate)
+	mkdir -p $$(dirname $@)
+	touch $@
 
 Dockerfile.dev-environment.built: Dockerfile.dev-environment
 	docker build -t $(DEV_IMAGE_NAME) -f $< .
@@ -34,7 +56,5 @@ Dockerfile.build-environment.built: Dockerfile.build-environment
 	touch fxsv.zip
 	docker ps -qa --filter name=$(INSTANCE_NAME) >$@
 	test -s $@ || rm $@
-
-.PHONY: upload invoke
 
 # vim: noet ts=8

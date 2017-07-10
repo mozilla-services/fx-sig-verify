@@ -71,6 +71,7 @@ setup(
         # eg: 'aspectlib==1.1.1', 'six>=1.7',
         "pyasn1",
         "M2Crypto",
+        "fleece",
         # verify-sigs is vendored in, so not listed here
         # "verify-sigs",
     ],
@@ -82,7 +83,6 @@ setup(
     entry_points={
         'console_scripts': [
             'fx-sig-verify = fx_sig_verify.cli:main',
-            'lambda_handler = fx_sig_verify.FF_Sig_Verify_Lambda:lambda_handler',
         ]
     },
     dependency_links=[

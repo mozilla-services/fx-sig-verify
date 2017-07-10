@@ -1,7 +1,11 @@
 from __future__ import print_function
-import boto3
+from fleece import boto3
+from fleece.xray import (monkey_patch_botocore_for_xray,
+                         trace_xray_subsegment)
+# import boto3
 from io import BytesIO
 import os
+import datetime
 import time
 
 import fx_sig_verify
@@ -18,7 +22,17 @@ VALID_CERTS = [
 MAX_EXE_SIZE = 100 * (1024 * 1024)  # 100MB
 
 # simplify debugging - can be set via environ
-verbose = False
+verbose = 0
+
+# by default wrap all boto calls with x-ray
+monkey_patch_botocore_for_xray()
+
+
+def debug(*args):
+    if verbose >= 2:
+        now = datetime.datetime.utcnow().isoformat()
+        for msg in args:
+            print("{}: {}".format(now, msg))
 
 
 # EVIL EVIL -- Monkeypatch to extend accessor
@@ -76,6 +90,7 @@ class SigVerifyBadSignature(SigVerifyException):
 s3 = boto3.resource('s3')
 
 
+@trace_xray_subsegment()
 def check_exe(objf):
     """
     Determine if the contents of `objf` are a valid Windows executable signed by
@@ -164,19 +179,27 @@ def check_exe(objf):
     return valid_signature
 
 
+@trace_xray_subsegment()
 def get_s3_object(bucket_name, key_name):
+    debug("in get_s3_object")
     s3_object = s3.Object(bucket_name, key_name)
+    debug("after s3.Object() {}/{} s3_object={}".format(bucket_name, key_name,
+                                                        type(s3_object)))
     result = s3_object.get()
+    debug("after s3_object.get() result={}".format(type(result)))
     if result['ContentLength'] > MAX_EXE_SIZE:
         msg = """Too big: {}/{} {}
                 ({})""".format(bucket_name, key_name, result['ContentLength'],
                                repr(result))
         print(msg)
         raise SigVerifyTooBig(msg)
+    debug("before body read")
     obj = BytesIO(result['Body'].read())
+    debug("after read() obj={}".format(type(obj)))
     return obj
 
 
+@trace_xray_subsegment()
 def report_validity(key, valid):
     if valid:
         msg = "Signature on {} is good.".format(key)
@@ -187,6 +210,7 @@ def report_validity(key, valid):
         raise SigVerifyBadSignature(msg)
 
 
+@trace_xray_subsegment()
 def process_one_s3_file(record):
     bucket_name = record['s3']['bucket']['name']
     key_name = record['s3']['object']['key']
@@ -208,6 +232,7 @@ def process_one_s3_file(record):
     report_validity(key_name, valid_sig)
 
 
+@trace_xray_subsegment()
 def send_sns(msg, e=None, reraise=False):
     # hack to get traceback in email
     if e:
@@ -229,17 +254,19 @@ def send_sns(msg, e=None, reraise=False):
         raise
 
 
-def set_verbose(value=None):
-    global verbose
-    if value is not None:
-        verbose = value
-    else:
+def set_verbose(verbose_override=None):
+    if not verbose_override:
         verbose_override = os.environ.get('VERBOSE')
-        if verbose_override:
-            verbose = bool(verbose_override)
-            print("verbose {} based on {}".format(verbose, verbose_override))
+    if verbose_override:
+        global verbose
+        try:
+            verbose = int(verbose_override)
+        except ValueError:
+            verbose = 1 if verbose_override else 0
+        print("verbose {} based on {}".format(verbose, verbose_override))
 
 
+@trace_xray_subsegment()
 def lambda_handler(event, context):
     """
     The main entry point when this package is installed as an AWS Lambda
@@ -294,6 +321,7 @@ def lambda_handler(event, context):
             result['bucket'] = record['s3']['bucket']['name']
             result['key'] = record['s3']['object']['key']
             msgs.append(msg)
+            msgs.append("is this #14?")
             result['result'] = msgs
             results.append(result)
     print(results)

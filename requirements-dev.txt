@@ -6,5 +6,6 @@ jmespath
 packaging
 pyparsing
 python-dateutil
+pytest
 s3transfer
 six
