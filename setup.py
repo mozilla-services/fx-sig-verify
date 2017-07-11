@@ -83,6 +83,7 @@ setup(
     entry_points={
         'console_scripts': [
             'fx-sig-verify = fx_sig_verify.cli:main',
+            'print-pe-certs = fx_sig_verify.verify_sigs.print_pe_certs:main',
         ]
     },
     dependency_links=[

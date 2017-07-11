@@ -15,6 +15,7 @@ from verify_sigs import pecoff_blob
 
 # Certificate serial numbers we consider valid
 VALID_CERTS = [
+    16384756435581673599510349952793916302L,  # new cert bug 1366012
     13159122772063869363917814975931229904L,  # just one cert for all channels
 ]
 
@@ -140,8 +141,9 @@ class MozSignedObject(object):
         Determine if the contents of `objf` are a valid Windows executable
         signed by Mozilla's Authenticode certificate.
 
-        :param objf: a file like object containing the bits to check. The object
-            must support a seek() method. The object is never written to.
+        This code mostly lifted from
+            src/fx_sig_verify/verify_sigs/print_pe_certs.py
+        with print statements removed :)
 
         :returns boolean: True if object has passed all tests.
 
