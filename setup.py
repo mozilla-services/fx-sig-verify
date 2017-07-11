@@ -24,7 +24,7 @@ def read(*names, **kwargs):
 
 setup(
     name='fx_sig_verify',
-    version='0.1.0',
+    version='0.1.1',
     license='MPL',
     description='AWS Lambda to check code signatures.',
     long_description='%s\n%s' % (
@@ -87,7 +87,7 @@ setup(
     },
     dependency_links=[
         "file:////tmp/fx-sig-verify/pip_downloads",
-        "https://github.com/hwine/verify-sigs/tarball/wip_hal#egg=verify_sigs=0.1.0",
+        "https://github.com/hwine/verify-sigs/tarball/wip_hal#egg=verify_sigs=0.1.1",
         ],
     lambda_module="verify_sigs",
 )
