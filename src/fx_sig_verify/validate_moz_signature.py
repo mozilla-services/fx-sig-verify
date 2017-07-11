@@ -19,17 +19,14 @@ VALID_CERTS = [
 ]
 
 # We will reject any file larger than this to avoid DoS.
-MAX_EXE_SIZE = 100 * (1024 * 1024)  # 100MB
-
-# simplify debugging - can be set via environ
-verbose = 0
+MAX_EXE_SIZE = 100 * (1024 * 1024)  # 100MiB
 
 # by default wrap all boto calls with x-ray
 monkey_patch_botocore_for_xray()
 
 
 def debug(*args):
-    if verbose >= 2:
+    if MozSignedObject.verbose >= 2:
         now = datetime.datetime.utcnow().isoformat()
         for msg in args:
             print("{}: {}".format(now, msg))
@@ -48,6 +45,284 @@ from pyasn1.type import univ  # noqa: E402 pylint: disable-msg=C6204,C6203
 univ.SequenceAndSetBase.__getitem__ = F
 del F, univ
 # EVIL EVIL
+
+
+class MozSignedObject(object):
+    """
+    Retain the state and context of the object we're checking. This includes the
+    name of the object and the final status.
+
+    Sub class for different conventions on name and status reporting.
+    """
+
+    # simplify debugging - can be set via environ
+    verbose = 0
+
+    @classmethod
+    def set_verbose(cls, verbose_override=None):
+        if not verbose_override:
+            verbose_override = os.environ.get('VERBOSE')
+        if verbose_override:
+            try:
+                cls.verbose = int(verbose_override)
+            except ValueError:
+                cls.verbose = 1 if verbose_override else 0
+            print("verbose {} based on {}".format(cls.verbose,
+                                                  verbose_override))
+
+    def __init__(self, *args, **kwargs):
+        self.artifact_name = None
+        self.object_status = None
+        self.errors = []
+        self.messages = []
+        if args or kwargs:
+            raise TypeError("unexpected args")
+
+    def set_status(self, new_status, only_if_unset=False):
+        if self.object_status and only_if_unset:
+            debug("ignoring '{}', already '{}'".format(new_status,
+                                                       self.object_status))
+            return  # # Early Exit
+        if self.object_status and not only_if_unset:
+            #  changing -- keep track
+            msg = ("changing status from '{}' to '{}'"
+                   .format(self.object_status, new_status))
+            debug(msg)
+            self.add_messge(msg)
+        self.object_status = new_status
+
+    def get_status(self):
+        if not self.object_status:
+            raise ValueError("subclass failed to status object")
+        return self.object_status
+
+    def as_dict(self):
+        "handy method to reference various instance vars in format() calls"
+        return self.__dict__
+
+    def add_error(self, *args):
+        self.errors.extend(args)
+
+    def add_messge(self, *args):
+        self.messages.extend(args)
+
+    def format_message(self):
+
+        def indent(s):
+            return '    ' + str(s)
+        lines = []
+        lines.append("{} for {}".format(self.get_status(), self.artifact_name))
+        if self.errors:
+            lines.append("errors:")
+            lines.extend(map(indent, self.errors))
+        if self.messages:
+            lines.append("other info:")
+            lines.extend(map(indent, self.messages))
+        return '\n'.join(lines)
+
+    def report_validity(self, valid):
+        raise ValueError("report_validity not implemented")
+
+    def get_flo(self, valid):
+        raise ValueError("get_flo not implemented")
+
+    def show_file_stats(self, objf):
+        if self.verbose:
+            cur_pos = objf.tell()
+            objf.seek(0, 2)
+            len_ = objf.tell()
+            objf.seek(0, 0)
+            print("Processing file of size {} (at {})".format(len_, cur_pos))
+
+    @trace_xray_subsegment()
+    def check_exe(self):
+        """
+        Determine if the contents of `objf` are a valid Windows executable
+        signed by Mozilla's Authenticode certificate.
+
+        :param objf: a file like object containing the bits to check. The object
+            must support a seek() method. The object is never written to.
+
+        :returns boolean: True if object has passed all tests.
+
+        :raises SigVerifyException: if any specific problem is identified in the
+            object
+        """
+        objf = self.get_flo()
+        self.show_file_stats(objf)
+        try:
+            fingerprinter = fingerprint.Fingerprinter(objf)
+            is_pecoff = fingerprinter.EvalPecoff()
+            fingerprinter.EvalGeneric()
+            results = fingerprinter.HashIt()
+        except Exception as e:
+            raise SigVerifyNoSignature(e)
+        finally:
+            objf.close()
+
+        if not is_pecoff:
+            msg = 'This is not a PE/COFF binary. Exiting.'
+            print(msg)
+            raise SigVerifyNoSignature(msg)
+
+        signed_pecoffs = [x for x in results if x['name'] == 'pecoff' and
+                          'SignedData' in x]
+
+        if not signed_pecoffs:
+            msg = 'This PE/COFF binary has no signature. Exiting.'
+            raise SigVerifyNoSignature('This PE/COFF binary has no signature. '
+                                       'Exiting.')
+
+        # TODO - can there be multiple signed_pecoffs?
+        signed_pecoff = signed_pecoffs[0]
+        if len(signed_pecoffs) > 1:
+            msg = ("Found {:d} signed pecoffs. Only processing first "
+                   "one.".format(len(signed_pecoffs)))
+            self.add_messge(msg)
+            if self.verbose:
+                print(msg)
+
+        signed_datas = signed_pecoff['SignedData']
+        # There may be multiple of these, if the windows binary was signed
+        # multiple times, e.g. by different entities. Each of them adds a
+        # complete SignedData blob to the binary.
+        # TODO(user): Process all instances
+        signed_data = signed_datas[0]
+        if self.verbose and len(signed_datas) > 1:
+            msg = ("Found {:d} signed datas. Only processing first "
+                   "one.".format(len(signed_datas)))
+            self.add_messge(msg)
+            if self.verbose:
+                print(msg)
+            msg = "Multiple Signatures"
+            raise SigVerifyBadSignature(msg)
+
+        blob = pecoff_blob.PecoffBlob(signed_data)
+
+        auth = auth_data.AuthData(blob.getCertificateBlob())
+        content_hasher_name = auth.digest_algorithm().name
+        computed_content_hash = signed_pecoff[content_hasher_name]
+
+        try:
+            auth.ValidateAsn1()
+            auth.ValidateHashes(computed_content_hash)
+            auth.ValidateSignatures()
+            auth.ValidateCertChains(time.gmtime())
+        except auth_data.Asn1Error as e:
+            if auth.openssl_error:
+                msg = 'OpenSSL Errors:\n%s' % auth.openssl_error
+                self.add_error(msg)
+            else:
+                msg = 'Asn1Error: {}'.format(str(e))
+            raise SigVerifyBadSignature(msg)
+
+        # TODO - validate if this is okay for now.
+        # base validity on some combo of auth fields.
+
+        # signing_cert_id is a tuple with a last element being the serial number
+        # of the certificate. That is a known quantity for our products.
+        cert_serial_number = auth.signing_cert_id[-1]
+        valid_signature = (auth.has_countersignature and (cert_serial_number in
+                                                          VALID_CERTS))
+        if not valid_signature:
+            raise SigVerifyNonMozSignature
+        return valid_signature
+
+
+class MozSignedObjectViaLambda(MozSignedObject):
+    def __init__(self, bucket=None, key=None, *args, **kwargs):
+        super(type(self), self).__init__(*args, **kwargs)
+        self.bucket_name = bucket
+        self.key_name = key
+        self.artifact_name = "s3://{}/{}".format(bucket, key)
+
+    def get_location(self):
+        "For S3, we need the bucket & key names"
+        return self.bucket_name, self.key_name
+
+    def report_validity(self, valid=None):
+        """
+        For invoked lambda functions, we have 3 report channels:
+            1. print to stdout (will end up in  CloudWatch logs)
+            2. send message to SNS
+            3. return JSON blob as function result (for testing)
+
+        The severity of any failure controls the what & where.
+        Any filtering or special casing should probably be applied in this
+        function. (E.g. excluding any artifacts from rules.)
+        """
+        message = self.format_message()
+        if self.verbose:
+            print(message)
+            print(self.summary())
+        self.send_sns(message)
+
+    def summary(self):
+        debug("len errors {},  messages {}".format(len(self.errors),
+                                                   len(self.messages)))
+        json_info = {
+            'bucket': self.bucket_name,
+            'key': self.key_name,
+            'status': self.get_status(),
+            'results': self.errors + self.messages,
+        }
+        return json_info
+
+    @trace_xray_subsegment()
+    def get_flo(self):
+        s3 = boto3.resource('s3')
+        debug("in get_s3_object")
+        s3_object = s3.Object(self.bucket_name, self.key_name)
+        debug("after s3.Object() {}/{} s3_object={}"
+              .format(self.bucket_name, self.key_name, type(s3_object)))
+        result = s3_object.get()
+        debug("after s3_object.get() result={}".format(type(result)))
+        if result['ContentLength'] > MAX_EXE_SIZE:
+            msg = """Too big: {}/{} {}
+                    ({})""".format(self.bucket_name, self.key_name,
+                                   result['ContentLength'], repr(result))
+            print(msg)
+            raise SigVerifyTooBig(msg)
+        debug("before body read")
+        flo = BytesIO(result['Body'].read())
+        debug("after read() flo={}".format(type(flo)))
+        return flo
+
+    @trace_xray_subsegment()
+    def process_one_s3_file(self):
+        if self.verbose:
+            print('Processing {}' .format(self.artifact_name))
+        try:
+            valid_sig = self.check_exe()
+        except Exception as e:
+            valid_sig = False
+            if isinstance(e, SigVerifyException):
+                self.add_error("Failure reason: {}".format(type(e).__name__))
+            else:
+                self.add_error("failed to process s3 object {}/{} '{}'"
+                               .format(self.bucket_name, self.key_name,
+                                       repr(e)))
+        self.set_status("pass" if valid_sig else "fail", only_if_unset=True)
+        return valid_sig
+
+    @trace_xray_subsegment()
+    def send_sns(self, msg, e=None, reraise=False):
+        # hack to get traceback in email
+        if e:
+            import traceback
+            msg += traceback.format_exc()
+        client = boto3.client("sns")
+        # keep a global to prevent infinite recursion on arn error
+        global topic_arn
+        topic_arn = os.environ.get('SNSARN', "")
+        if self.verbose:
+            print("snsarn: {}".format(topic_arn))
+        if not topic_arn:
+            # bad config, we expected this in the environ
+            # set flag so we don't re-raise
+            topic_arn = "no-topic-arn"
+            raise KeyError("Missing 'SNSARN' from environment")
+        response = client.publish(Message=msg, TopicArn=topic_arn)  # noqa: W0612
 
 
 class SigVerifyException(Exception):
@@ -87,183 +362,12 @@ class SigVerifyBadSignature(SigVerifyException):
     """
     pass
 
-s3 = boto3.resource('s3')
 
-
-@trace_xray_subsegment()
-def check_exe(objf):
-    """
-    Determine if the contents of `objf` are a valid Windows executable signed by
-    Mozilla's Authenticode certificate.
-
-    :param objf: a file like object containing the bits to check. The object
-        must support a seek() method. The object is never written to.
-
-    :returns boolean: True if object has passed all tests.
-
-    :raises SigVerifyException: if any specific problem is identified in the
-        object
-    """
-    if verbose:
-        cur_pos = objf.tell()
-        objf.seek(0, 2)
-        len_ = objf.tell()
-        objf.seek(0, 0)
-        print("Processing file of size {} (at {})".format(len_, cur_pos))
-    try:
-        fingerprinter = fingerprint.Fingerprinter(objf)
-        is_pecoff = fingerprinter.EvalPecoff()
-        fingerprinter.EvalGeneric()
-        results = fingerprinter.HashIt()
-    except Exception as e:
-        raise SigVerifyNoSignature(e)
-    finally:
-        objf.close()
-
-    if not is_pecoff:
-        msg = 'This is not a PE/COFF binary. Exiting.'
-        print(msg)
-        raise SigVerifyNoSignature(msg)
-
-    signed_pecoffs = [x for x in results if x['name'] == 'pecoff' and
-                      'SignedData' in x]
-
-    if not signed_pecoffs:
-        raise SigVerifyNoSignature('This PE/COFF binary has no signature. '
-                                   'Exiting.')
-
-    # TODO - can there be multiple signed_pecoffs?
-    signed_pecoff = signed_pecoffs[0]
-    if verbose and len(signed_pecoffs) > 1:
-        print("Found {:d} signed pecoffs. Only processing first "
-              "one.".format(len(signed_pecoffs)))
-
-    signed_datas = signed_pecoff['SignedData']
-    # There may be multiple of these, if the windows binary was signed multiple
-    # times, e.g. by different entities. Each of them adds a complete SignedData
-    # blob to the binary.
-    # TODO(user): Process all instances
-    signed_data = signed_datas[0]
-    if verbose and len(signed_datas) > 1:
-        print("Found {:d} signed datas. Only processing first "
-              "one.".format(len(signed_datas)))
-        raise SigVerifyBadSignature("Multiple Signatures")
-
-    blob = pecoff_blob.PecoffBlob(signed_data)
-
-    auth = auth_data.AuthData(blob.getCertificateBlob())
-    content_hasher_name = auth.digest_algorithm().name
-    computed_content_hash = signed_pecoff[content_hasher_name]
-
-    try:
-        auth.ValidateAsn1()
-        auth.ValidateHashes(computed_content_hash)
-        auth.ValidateSignatures()
-        auth.ValidateCertChains(time.gmtime())
-    except auth_data.Asn1Error:
-        if auth.openssl_error:
-            print('OpenSSL Errors:\n%s' % auth.openssl_error)
-        raise
-
-    # TODO - validate if this is okay for now.
-    # base validity on some combo of auth fields.
-
-    # signing_cert_id is a tuple with a last element being the serial number of
-    # the certificate. That is a known quantity for our products.
-    cert_serial_number = auth.signing_cert_id[-1]
-    valid_signature = (auth.has_countersignature and
-                       (cert_serial_number in VALID_CERTS)
-                       )
-    if not valid_signature:
-        raise SigVerifyNonMozSignature
-    return valid_signature
-
-
-@trace_xray_subsegment()
-def get_s3_object(bucket_name, key_name):
-    debug("in get_s3_object")
-    s3_object = s3.Object(bucket_name, key_name)
-    debug("after s3.Object() {}/{} s3_object={}".format(bucket_name, key_name,
-                                                        type(s3_object)))
-    result = s3_object.get()
-    debug("after s3_object.get() result={}".format(type(result)))
-    if result['ContentLength'] > MAX_EXE_SIZE:
-        msg = """Too big: {}/{} {}
-                ({})""".format(bucket_name, key_name, result['ContentLength'],
-                               repr(result))
-        print(msg)
-        raise SigVerifyTooBig(msg)
-    debug("before body read")
-    obj = BytesIO(result['Body'].read())
-    debug("after read() obj={}".format(type(obj)))
+def artifact_to_check_via_s3(lambda_event_record):
+    bucket_name = lambda_event_record['s3']['bucket']['name']
+    key_name = lambda_event_record['s3']['object']['key']
+    obj = MozSignedObjectViaLambda(bucket_name, key_name)
     return obj
-
-
-@trace_xray_subsegment()
-def report_validity(key, valid):
-    if valid:
-        msg = "Signature on {} is good.".format(key)
-    else:
-        msg = "Bad Signature on {}.".format(key)
-    print(msg)
-    if not valid:
-        raise SigVerifyBadSignature(msg)
-
-
-@trace_xray_subsegment()
-def process_one_s3_file(record):
-    bucket_name = record['s3']['bucket']['name']
-    key_name = record['s3']['object']['key']
-    if verbose:
-        print('Processing {}/{}' .format(bucket_name, key_name))
-    try:
-        exe_file = get_s3_object(bucket_name, key_name)
-    except Exception as e:
-        raise SigVerifyException("failed to get s3 object {}/{} '{}'"
-                                 .format(bucket_name, key_name, repr(e)))
-    try:
-        valid_sig = check_exe(exe_file)
-    except Exception as e:
-        if isinstance(e, SigVerifyException):
-            raise e
-        else:
-            raise SigVerifyException("failed to process s3 object {}/{} '{}'"
-                                     .format(bucket_name, key_name), repr(e))
-    report_validity(key_name, valid_sig)
-
-
-@trace_xray_subsegment()
-def send_sns(msg, e=None, reraise=False):
-    # hack to get traceback in email
-    if e:
-        import traceback
-        msg += traceback.format_exc()
-    client = boto3.client("sns")
-    # keep a global to prevent infinite recursion on arn error
-    global topic_arn
-    topic_arn = os.environ.get('SNSARN', "")
-    if verbose:
-        print("snsarn: {}".format(topic_arn))
-    if not topic_arn:
-        # bad config, we expected this in the environ
-        # set flag so we don't re-raise
-        topic_arn = "no-topic-arn"
-        raise KeyError("Missing 'SNSARN' from environment")
-    response = client.publish(Message=msg, TopicArn=topic_arn)  # noqa: W0612
-    if reraise and e:
-        raise
-
-
-def set_verbose(verbose_override=None):
-    if not verbose_override:
-        verbose_override = os.environ.get('VERBOSE')
-    if verbose_override:
-        global verbose
-        try:
-            verbose = int(verbose_override)
-        except ValueError:
-            verbose = 1 if verbose_override else 0
-        print("verbose {} based on {}".format(verbose, verbose_override))
 
 
 @trace_xray_subsegment()
@@ -279,56 +383,46 @@ def lambda_handler(event, context):
 
     :returns None: the S3 event API does not expect any result.
     """
-    set_verbose()
+    MozSignedObject.set_verbose()
     results = [{'version': fx_sig_verify.__version__}]
     for record in event['Records']:
-        msgs = []
+        artifact = artifact_to_check_via_s3(record)
         try:
+            valid_sig = False
             try:
-                result = {}
-                process_one_s3_file(record)
+                valid_sig = artifact.process_one_s3_file()
+                debug("after process 1 {}".format(valid_sig))
             except SigVerifyNonMozSignature as e:
                 msg = "non-moz signature"
-                send_sns(msg, e)
+                debug(msg)
+                artifact.send_sns(msg, e)
             except SigVerifyTooBig as e:
                 # send SNS of program failure
                 msg = "data failure"
-                send_sns(msg, e)
+                debug(msg)
+                artifact.send_sns(msg, e)
             except SigVerifyNoSignature as e:
                 msg = "exe without sig"
-                send_sns(msg, e)
+                debug(msg)
+                artifact.send_sns(msg, e)
             except SigVerifyBadSignature as e:
                 # send SNS of bad binary uploaded
                 msg = "bad sig"
-                send_sns(msg, e)
+                debug(msg)
+                artifact.send_sns(msg, e)
             except SigVerifyException as e:
                 msg = "unclassified error"
-                send_sns(msg, e)
+                debug(msg)
+                artifact.send_sns(msg, e)
             except (Exception) as e:
                 # uncaught by me program failure
-                msg = "app failure"
-                send_sns(msg, e)
-            else:
-                # send SNS of good binary
-                msg = "pass"
-                if verbose:
-                    # controlled by environment variable
-                    send_sns(msg, reraise=False)
+                msg = ("app failure: " + str(type(e).__name__) +
+                       str(repr(e)))
+                debug(msg)
+                artifact.send_sns(msg, e)
         except (Exception) as e:
             # double exception, should already have a message
-            msgs.append("app failure: {}".format(str(e)))
-        finally:
-            result['bucket'] = record['s3']['bucket']['name']
-            result['key'] = record['s3']['object']['key']
-            msgs.append(msg)
-            msgs.append("is this #14?")
-            result['result'] = msgs
-            results.append(result)
-    print(results)
+            artifact.add_error("app failure 2: {}".format(str(e)))
+        artifact.report_validity()
+        results.append(artifact.summary())
     return results
-
-if __name__ == '__main__':
-    import sys  # noqa: E402
-    flo = open(sys.argv[1], 'rb')
-    valid = check_exe(flo, True)
-    print("file '{}' is {}".format(sys.argv[1], valid))

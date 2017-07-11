@@ -11,9 +11,60 @@ from __future__ import print_function
 import argparse
 # set up path for everything else
 import fx_sig_verify
-from fx_sig_verify.validate_moz_signature import (check_exe, report_validity,
-                                                  SigVerifyException,
-                                                  set_verbose)
+from fx_sig_verify.validate_moz_signature import (MozSignedObject,
+                                                  SigVerifyException)
+
+
+class MozSignedObjectViaCLI(MozSignedObject):
+    def __init__(self, fname=None, *args, **kwargs):
+        super(type(self), self).__init__(*args, **kwargs)
+        self.artifact_name = fname
+        self.url = "file://{}".format(fname)
+
+    def get_location(self):
+        "For S3, we need the bucket & key names"
+        return self.bucket, self.key
+
+    def report_validity(self, valid):
+        """
+        For invoked cli functions, we have 2 report channels:
+            1. print to stdout
+            2. exit code
+
+        The severity of any failure controls the what & where.
+        Any filtering or special casing should probably be applied in this
+        function. (E.g. excluding any artifacts from rules.)
+        """
+        if self.verbose:
+            print(self.format_message())
+
+    def summary(self):
+        json_info = {
+            'bucket': self.bucket_name,
+            'key': self.key_name,
+            'status': self.get_status(),
+            'results': self.errors + self.messages,
+        }
+        return json_info
+
+    def get_flo(self):
+        flo = open(self.artifact_name, 'rb')
+        return flo
+
+    def process_one_local_file(self):
+        if self.verbose:
+            print('Processing {}'.format(self.artifact_name))
+        try:
+            valid_sig = self.check_exe()
+        except Exception as e:
+            valid_sig = False
+            if isinstance(e, SigVerifyException):
+                self.add_error("Exception {}".format(type(e).__name__))
+            else:
+                self.add_error("failed to process local file {} '{}'"
+                               .format(self.artifact_name, repr(e)))
+        self.set_status("pass" if valid_sig else "fail")
+        return valid_sig
 
 
 def parse_args(cmd_line=None):
@@ -35,13 +86,12 @@ def main(cmd_line=None):
     :param filename: path to ``exe`` file
     :returns result_code: 0 if no failure, per unix conventions
     """
-    set_verbose(True)
+    MozSignedObject.set_verbose(True)
     args = parse_args(cmd_line=cmd_line)
-    flo = file(args.suspect[0], 'rb')
+    artifact = MozSignedObjectViaCLI(args.suspect[0])
     try:
-        valid = check_exe(flo)
-        report_validity(args.suspect[0], valid)
+        valid = artifact.process_one_local_file()
     except SigVerifyException:
         valid = False
-        pass
+    artifact.report_validity(valid)
     raise SystemExit(0 if valid else 1)
