@@ -7,7 +7,7 @@ COPY . .
 
 # Runtime requirements in the src tree, now that it's there
 #COPY requirements.txt ./
-RUN pip install -r requirements.txt -t src/lib
+RUN pip install --requirement requirements.txt -t src/lib
 
 # Cause everything to be compiled
 RUN pip install -t /tmp/fxsv .
