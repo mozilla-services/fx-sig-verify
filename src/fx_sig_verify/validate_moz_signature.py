@@ -15,6 +15,7 @@ from verify_sigs import pecoff_blob
 
 # Certificate serial numbers we consider valid
 VALID_CERTS = [
+    16384756435581673599510349952793916302L,  # new cert bug 1366012
     13159122772063869363917814975931229904L,  # just one cert for all channels
 ]
 
@@ -140,8 +141,9 @@ class MozSignedObject(object):
         Determine if the contents of `objf` are a valid Windows executable
         signed by Mozilla's Authenticode certificate.
 
-        :param objf: a file like object containing the bits to check. The object
-            must support a seek() method. The object is never written to.
+        This code mostly lifted from
+            src/fx_sig_verify/verify_sigs/print_pe_certs.py
+        with print statements removed :)
 
         :returns boolean: True if object has passed all tests.
 
@@ -255,7 +257,8 @@ class MozSignedObjectViaLambda(MozSignedObject):
         if self.verbose:
             print(message)
             print(self.summary())
-        self.send_sns(message)
+        if valid is not None and not valid or self.verbose:
+            self.send_sns(message)
 
     def summary(self):
         debug("len errors {},  messages {}".format(len(self.errors),
@@ -384,7 +387,8 @@ def lambda_handler(event, context):
     :returns None: the S3 event API does not expect any result.
     """
     MozSignedObject.set_verbose()
-    results = [{'version': fx_sig_verify.__version__}]
+    response = {'version': fx_sig_verify.__version__}
+    results = []
     for record in event['Records']:
         artifact = artifact_to_check_via_s3(record)
         try:
@@ -425,4 +429,5 @@ def lambda_handler(event, context):
             artifact.add_error("app failure 2: {}".format(str(e)))
         artifact.report_validity()
         results.append(artifact.summary())
-    return results
+    response['results'] = results
+    return response
