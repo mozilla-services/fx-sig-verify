@@ -1,7 +1,7 @@
 # This file exists so you can easily regenerate your project.
 #
 # `cookiepatcher` is a convenient shim around `cookiecutter`
-# for regenerating projects (it will generate a .cookiecutterrc 
+# for regenerating projects (it will generate a .cookiecutterrc
 # automatically for any template). To use it:
 #
 #    pip install cookiepatcher
@@ -24,18 +24,18 @@ default_context:
     codeclimate:               'no'
     codecov:                   'yes'
     command_line_interface:    'argparse'
-    command_line_interface_bin_name: 'ff-sig-verify'
+    command_line_interface_bin_name: 'fx-sig-verify'
     coveralls:                 'yes'
-    distribution_name:         'ff-sig-verify'
+    distribution_name:         'fx-sig-verify'
     email:                     'hwine@mozilla.com'
     full_name:                 'Hal Wine'
     github_username:           'hwine'
     landscape:                 'no'
-    package_name:              'ff_sig_verify'
-    project_name:              'ff-sig-verify'
+    package_name:              'fx_sig_verify'
+    project_name:              'fx-sig-verify'
     project_short_description: 'AWS Lambda to check code signatures.'
     release_date:              'today'
-    repo_name:                 'ff-sig-verify'
+    repo_name:                 'fx-sig-verify'
     requiresio:                'yes'
     scrutinizer:               'no'
     sphinx_doctest:            'no'
