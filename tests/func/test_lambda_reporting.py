@@ -1,4 +1,4 @@
-# for 'pass' cases, they should be reported to SNS only if VERBOSE is trueish
+# For any case, logs should be sent to CloudWatch (aka, stdout)
 
 import boto3
 import os
@@ -31,7 +31,15 @@ def build_event(bucket, key):
 @pytest.fixture()
 def good_files():
     payload = ['32bit.exe', ]
-    print(payload)
+    return payload
+
+
+@pytest.fixture()
+def bad_files():
+    payload = ['bad_1.exe',
+               'signtool.exe',
+               'README.rst',
+               ]
     return payload
 
 
@@ -102,6 +110,11 @@ def setup_aws_mocks():
                      Protocol="sqs",
                      Endpoint="arn:aws:sqs:us-east-1:123456789012:test-queue")
     queue = sqs_conn.get_queue_by_name(QueueName=sqs_name)
+    # purge the queue just in case
+    while True:
+        messages = queue.receive_messages(MaxNumberOfMessages=100)
+        if not messages:
+            break
     return queue
 
 
@@ -128,9 +141,9 @@ def test_pass_no_message_when_no_verbose(set_verbose_false, good_files):
             count, msg = get_one_message(queue)
 
             # print things that will be useful to debug
+            print("VERBOSE:", os.environ.get('VERBOSE', '<not set>'))
             print("response:", response)
             print("message:", msg)
-            print("count:", count)
 
             # actual criteria to pass
             assert "pass" in response['results'][0]['status']
@@ -157,3 +170,27 @@ def test_pass_message_when_verbose(set_verbose_true, good_files):
             print("message:", msg)
             assert "pass" in response['results'][0]['status']
             assert count is 1 and msg.startswith('pass for')
+
+
+@mock_s3
+@mock_sns
+@mock_sqs
+def test_always_log_output_issue_17(bad_files, good_files, set_verbose_true,
+                                    set_verbose_false, capsys):
+    # mock the queue, but we won't examine it
+    setup_aws_mocks()
+    bucket = create_bucket()
+    # Given that VERBOSE is in any state
+    for setter in set_verbose_true[0], set_verbose_false[0]:
+        setter()
+        # WHEN any file is processed
+        for fname in good_files + bad_files:
+            upload_file(bucket, fname)
+            event = build_event(bucket.name, fname)
+            results = lambda_handler(event, None)
+            # THEN there should always be a message on stdout
+            out, err = capsys.readouterr()
+            # put useful information in failure output
+            print("response: '{}'".format(results))
+            assert out != ''
+            assert err == ''
