@@ -257,7 +257,8 @@ class MozSignedObjectViaLambda(MozSignedObject):
         if self.verbose:
             print(message)
             print(self.summary())
-        self.send_sns(message)
+        if valid is not None and not valid or self.verbose:
+            self.send_sns(message)
 
     def summary(self):
         debug("len errors {},  messages {}".format(len(self.errors),
@@ -386,7 +387,8 @@ def lambda_handler(event, context):
     :returns None: the S3 event API does not expect any result.
     """
     MozSignedObject.set_verbose()
-    results = [{'version': fx_sig_verify.__version__}]
+    response = {'version': fx_sig_verify.__version__}
+    results = []
     for record in event['Records']:
         artifact = artifact_to_check_via_s3(record)
         try:
@@ -427,4 +429,5 @@ def lambda_handler(event, context):
             artifact.add_error("app failure 2: {}".format(str(e)))
         artifact.report_validity()
         results.append(artifact.summary())
-    return results
+    response['results'] = results
+    return response
