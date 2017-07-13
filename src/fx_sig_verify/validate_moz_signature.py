@@ -61,6 +61,8 @@ class MozSignedObject(object):
 
     @classmethod
     def set_verbose(cls, verbose_override=None):
+        # reset - testing issue, not production, as new class isn't created
+        cls.verbose = 0
         if not verbose_override:
             verbose_override = os.environ.get('VERBOSE')
         if verbose_override:
