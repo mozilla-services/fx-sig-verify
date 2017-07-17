@@ -256,10 +256,13 @@ class MozSignedObjectViaLambda(MozSignedObject):
         function. (E.g. excluding any artifacts from rules.)
         """
         message = self.format_message()
+        if valid is None:
+            # Infer validity from message
+            valid = message.startswith('pass')
         if self.verbose:
             print("msg: '{}'".format(message))
             print("sum: '{}'".format(self.summary()))
-        if (valid is not None and not valid) or self.verbose:
+        if (not valid) or self.verbose:
             self.send_sns(message)
 
     def summary(self):
