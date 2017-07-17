@@ -61,6 +61,8 @@ class MozSignedObject(object):
 
     @classmethod
     def set_verbose(cls, verbose_override=None):
+        # reset - testing issue, not production, as new class isn't created
+        cls.verbose = 0
         if not verbose_override:
             verbose_override = os.environ.get('VERBOSE')
         if verbose_override:
@@ -255,9 +257,9 @@ class MozSignedObjectViaLambda(MozSignedObject):
         """
         message = self.format_message()
         if self.verbose:
-            print(message)
-            print(self.summary())
-        if valid is not None and not valid or self.verbose:
+            print("msg: '{}'".format(message))
+            print("sum: '{}'".format(self.summary()))
+        if (valid is not None and not valid) or self.verbose:
             self.send_sns(message)
 
     def summary(self):
@@ -430,4 +432,6 @@ def lambda_handler(event, context):
         artifact.report_validity()
         results.append(artifact.summary())
     response['results'] = results
+    # always output response to CloudWatch (issue #17)
+    print(response)
     return response
