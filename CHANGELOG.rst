@@ -2,9 +2,19 @@
 Changelog
 =========
 
+`0.2.3`__
+-----------------------------------------
+__ https://github.com/mozilla-services/fx-sig-verify/tree/v0.2.3
+
+ - Always send SNS on failure. It was bustage from Refactoring
+   (04d8e926c). No test case for fail path alerting.
+
+ - Also removed redundant test_lambda_call.py, which was done prior to use
+   of moto.
+
 `0.2.2`__
 -----------------------------------------
-__ https://github.com/mozilla-services/fx-sig-verify/tree/v0.2.0
+__ https://github.com/mozilla-services/fx-sig-verify/tree/v0.2.2
 
 - [issue `#17`__] 'pass' messages are always logged to CloudWatch
 
