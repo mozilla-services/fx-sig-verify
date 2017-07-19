@@ -58,6 +58,7 @@ class MozSignedObject(object):
 
     # simplify debugging - can be set via environ
     verbose = 0
+    s3_backoff = 5  # not yet adjustable
 
     @classmethod
     def set_verbose(cls, verbose_override=None):
@@ -91,7 +92,7 @@ class MozSignedObject(object):
             msg = ("changing status from '{}' to '{}'"
                    .format(self.object_status, new_status))
             debug(msg)
-            self.add_messge(msg)
+            self.add_message(msg)
         self.object_status = new_status
 
     def get_status(self):
@@ -106,7 +107,7 @@ class MozSignedObject(object):
     def add_error(self, *args):
         self.errors.extend(args)
 
-    def add_messge(self, *args):
+    def add_message(self, *args):
         self.messages.extend(args)
 
     def format_message(self):
@@ -182,7 +183,7 @@ class MozSignedObject(object):
         if len(signed_pecoffs) > 1:
             msg = ("Found {:d} signed pecoffs. Only processing first "
                    "one.".format(len(signed_pecoffs)))
-            self.add_messge(msg)
+            self.add_message(msg)
             if self.verbose:
                 print(msg)
 
@@ -195,7 +196,7 @@ class MozSignedObject(object):
         if self.verbose and len(signed_datas) > 1:
             msg = ("Found {:d} signed datas. Only processing first "
                    "one.".format(len(signed_datas)))
-            self.add_messge(msg)
+            self.add_message(msg)
             if self.verbose:
                 print(msg)
             msg = "Multiple Signatures"
@@ -278,13 +279,21 @@ class MozSignedObjectViaLambda(MozSignedObject):
 
     @trace_xray_subsegment()
     def get_flo(self):
-        s3 = boto3.resource('s3')
-        debug("in get_s3_object")
-        s3_object = s3.Object(self.bucket_name, self.key_name)
-        debug("after s3.Object() {}/{} s3_object={}"
-              .format(self.bucket_name, self.key_name, type(s3_object)))
-        result = s3_object.get()
-        debug("after s3_object.get() result={}".format(type(result)))
+        s3_client = boto3.client('s3')
+        debug("in get_flo")
+        try:
+            result = s3_client.get_object(Bucket=self.bucket_name,
+                                          Key=self.key_name)
+        except Exception as e:
+            self.add_error("failed to process s3 object {}/{} '{}'"
+                           .format(self.bucket_name, self.key_name, repr(e)))
+            self.add_message("Assume NoSuchKey, waited for 5 seconds")
+            time.sleep(self.s3_backoff)
+            result = s3_client.get_object(Bucket=self.bucket_name,
+                                          Key=self.key_name)
+            self.add_message("get_object worked after wait")
+
+        debug("after s3_client.get_object() result={}".format(type(result)))
         if result['ContentLength'] > MAX_EXE_SIZE:
             msg = """Too big: {}/{} {}
                     ({})""".format(self.bucket_name, self.key_name,
