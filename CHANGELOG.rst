@@ -2,6 +2,13 @@
 Changelog
 =========
 
+`0.2.4`__
+-----------------------------------------
+__ https://github.com/mozilla-services/fx-sig-verify/tree/v0.2.4
+
+ - Add a 5 second backoff if we get NoSuchKey from S3. And instrument
+   the logs output to be able to detect efficacy.
+
 `0.2.3`__
 -----------------------------------------
 __ https://github.com/mozilla-services/fx-sig-verify/tree/v0.2.3
