@@ -11,6 +11,9 @@ from fx_sig_verify.validate_moz_signature import (lambda_handler, )  # noqa: E40
 bucket_name = 'pseudo-bucket'
 key_name = '32bit.exe'
 sqs_name = "test-queue"
+class DummyContext(object):
+    aws_request_id = 'DUMMY ID'
+dummy_context = DummyContext()
 
 
 @pytest.fixture(scope='module', autouse=True)
@@ -123,7 +126,7 @@ def test_pass_no_message_when_no_verbose(set_verbose_false, good_files):
         for fname in good_files:
             upload_file(bucket, fname)
             event = build_event(bucket.name, fname)
-            response = lambda_handler(event, None)
+            response = lambda_handler(event, dummy_context)
             # THEN there should be no message
             count, msg = get_one_message(queue)
 
@@ -150,7 +153,7 @@ def test_pass_message_when_verbose(set_verbose_true, good_files):
         for fname in good_files:
             upload_file(bucket, fname)
             event = build_event(bucket.name, fname)
-            response = lambda_handler(event, None)
+            response = lambda_handler(event, dummy_context)
             print("response:", response)
             # THEN there should be no message
             count, msg = get_one_message(queue)

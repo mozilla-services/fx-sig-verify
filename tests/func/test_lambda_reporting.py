@@ -11,6 +11,9 @@ from fx_sig_verify.validate_moz_signature import (lambda_handler, )  # noqa: E40
 bucket_name = 'pseudo-bucket'
 key_name = '32bit.exe'
 sqs_name = "test-queue"
+class DummyContext(object):
+    aws_request_id = 'DUMMY ID'
+dummy_context = DummyContext()
 
 
 @pytest.fixture(scope='module', autouse=True)
@@ -138,7 +141,7 @@ def test_always_log_output_issue_17(bad_files, good_files, set_verbose_true,
         for fname in good_files + bad_files:
             upload_file(bucket, fname)
             event = build_event(bucket.name, fname)
-            results = lambda_handler(event, None)
+            results = lambda_handler(event, dummy_context)
             # THEN there should always be a message on stdout
             out, err = capsys.readouterr()
             # put useful information in failure output

@@ -401,7 +401,10 @@ def lambda_handler(event, context):
     :returns None: the S3 event API does not expect any result.
     """
     MozSignedObject.set_verbose()
-    response = {'version': fx_sig_verify.__version__}
+    response = {'version': fx_sig_verify.__version__,
+                'input_event': event,
+                'request_id' : context.aws_request_id,
+                }
     results = []
     for record in event['Records']:
         artifact = artifact_to_check_via_s3(record)
