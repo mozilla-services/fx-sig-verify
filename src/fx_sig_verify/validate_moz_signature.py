@@ -58,7 +58,6 @@ class MozSignedObject(object):
 
     # simplify debugging - can be set via environ
     verbose = 0
-    s3_backoff = 5  # not yet adjustable
 
     @classmethod
     def set_verbose(cls, verbose_override=None):
@@ -287,11 +286,10 @@ class MozSignedObjectViaLambda(MozSignedObject):
         except Exception as e:
             self.add_error("failed to process s3 object {}/{} '{}'"
                            .format(self.bucket_name, self.key_name, repr(e)))
-            self.add_message("Assume NoSuchKey, waited for 5 seconds")
-            time.sleep(self.s3_backoff)
+            self.add_message("First get failed, trying to unescape")
             result = s3_client.get_object(Bucket=self.bucket_name,
-                                          Key=self.key_name)
-            self.add_message("get_object worked after wait")
+                                          Key=urllib.unescape_space(self.key_name))
+            self.add_message("get_object worked after unescaping")
 
         debug("after s3_client.get_object() result={}".format(type(result)))
         if result['ContentLength'] > MAX_EXE_SIZE:
