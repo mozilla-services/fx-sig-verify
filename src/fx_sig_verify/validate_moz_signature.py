@@ -7,6 +7,7 @@ from io import BytesIO
 import os
 import datetime
 import time
+import urllib
 
 import fx_sig_verify
 from verify_sigs import auth_data
@@ -287,8 +288,9 @@ class MozSignedObjectViaLambda(MozSignedObject):
             self.add_error("failed to process s3 object {}/{} '{}'"
                            .format(self.bucket_name, self.key_name, repr(e)))
             self.add_message("First get failed, trying to unescape")
+            self.add_message(str(s3_client.list_objects_v2(Bucket=self.bucket_name)))
             result = s3_client.get_object(Bucket=self.bucket_name,
-                                          Key=urllib.unescape_space(self.key_name))
+                                          Key=urllib.unquote_plus(self.key_name))
             self.add_message("get_object worked after unescaping")
 
         debug("after s3_client.get_object() result={}".format(type(result)))

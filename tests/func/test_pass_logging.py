@@ -9,7 +9,6 @@ from fx_sig_verify.validate_moz_signature import (lambda_handler, )  # noqa: E40
 
 # Constants
 bucket_name = 'pseudo-bucket'
-key_name = '32bit.exe'
 sqs_name = "test-queue"
 class DummyContext(object):
     aws_request_id = 'DUMMY ID'
@@ -33,7 +32,10 @@ def build_event(bucket, key):
 
 @pytest.fixture()
 def good_files():
-    payload = ['32bit.exe', ]
+    payload = ['32bit.exe',  # signed with older valid key
+               '32bit_new.exe',  # signed with current valid key
+               '32bit+new.exe',  # valid, but S3 naming issue (issue #14)
+               ]
     print(payload)
     return payload
 
@@ -85,8 +87,11 @@ def create_bucket():
 def upload_file(bucket, filename):
     data_dir = os.path.join(os.path.dirname(__file__), '..', 'data')
     fname = os.path.join(data_dir, filename)
+    # to replicate S3 functionality, change any space in file name to a '+'
+    # see issue #14
+    key_name = filename.replace(' ', '+')
     bucket.put_object(Body=open(fname, 'r'), Key=key_name)
-    return [(bucket_name, key_name), ]
+    return [(bucket_name, filename), ]
 
 
 def setup_aws_mocks():
@@ -109,7 +114,8 @@ def setup_aws_mocks():
 
 
 def get_one_message(queue):
-    messages = queue.receive_messages(MaxNumberOfMessages=1)
+    # get more than one to detect double push
+    messages = queue.receive_messages(MaxNumberOfMessages=10)
     return (len(messages), messages[0].body) if len(messages) else (0, '')
 
 
