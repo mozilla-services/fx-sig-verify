@@ -1,4 +1,3 @@
-
 Changelog
 =========
 
@@ -6,7 +5,7 @@ Changelog
 -----------------------------------------
 __ https://github.com/mozilla-services/fx-sig-verify/tree/v0.2.6
 
- - Improve test coverage to actually test the case from issue #14__
+ - Improve test coverage to actually test the case from issue `#14`__
 
  - Fix the code that the new tests uncovered.
 
@@ -62,7 +61,7 @@ __ https://github.com/mozilla-services/fx-sig-verify/tree/v0.2.0
 
 - Support for new Authenticode cert `bug 1366012`__
 
-__ https://bugzilla.mozilla.org/show_bug.cgi?id=13j6012
+__ https://bugzilla.mozilla.org/show_bug.cgi?id=1366012
 
 0.1.1
 -----------------------------------------
