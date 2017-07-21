@@ -2,6 +2,17 @@
 Changelog
 =========
 
+`0.2.5`__
+-----------------------------------------
+__ https://github.com/mozilla-services/fx-sig-verify/tree/v0.2.5
+
+ - Changed approach to unescaping 'key' provided by S3.
+
+ - Added AWS Request ID and event record to logging. Request ID needed
+   to correlate invocation when multiple log streams combined.
+
+ - Removed the 5 second backoff from 0.2.4 - it did nothing.
+
 `0.2.4`__
 -----------------------------------------
 __ https://github.com/mozilla-services/fx-sig-verify/tree/v0.2.4
