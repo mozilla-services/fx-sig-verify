@@ -43,7 +43,7 @@ Overview
     :alt: PyPI Package latest release
     :target: https://pypi.python.org/pypi/fx-sig-verify
 
-.. |commits-since| image:: https://img.shields.io/github/commits-since/mozilla-services/fx-sig-verify/v0.1.1.svg
+.. |commits-since| image:: https://img.shields.io/github/commits-since/mozilla-services/fx-sig-verify/v0.2.6.svg
     :alt: Commits since latest release
     :target: https://github.com/mozilla-services/fx-sig-verify/compare/v0.2.6...master
 
