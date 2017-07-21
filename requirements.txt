@@ -1,4 +1,5 @@
 # these need to be installed in the lib subdir
 M2Crypto
 pyasn1
-fleece
+# version of fleece patched to allow use with moto offline testing
+git+https://github.com/hwine/fleece.git@spulec_moto_1006
