@@ -45,7 +45,7 @@ Overview
 
 .. |commits-since| image:: https://img.shields.io/github/commits-since/mozilla-services/fx-sig-verify/v0.1.1.svg
     :alt: Commits since latest release
-    :target: https://github.com/mozilla-services/fx-sig-verify/compare/v0.2.5...master
+    :target: https://github.com/mozilla-services/fx-sig-verify/compare/v0.2.6...master
 
 .. |downloads| image:: https://img.shields.io/pypi/dm/fx-sig-verify.svg
     :alt: PyPI Package monthly downloads

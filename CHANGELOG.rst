@@ -2,6 +2,16 @@
 Changelog
 =========
 
+`0.2.6`__
+-----------------------------------------
+__ https://github.com/mozilla-services/fx-sig-verify/tree/v0.2.6
+
+ - Improve test coverage to actually test the case from issue #14__
+
+ - Fix the code that the new tests uncovered.
+
+__ https://github.com/mozilla-services/fx-sig-verify/issues/14
+
 `0.2.5`__
 -----------------------------------------
 __ https://github.com/mozilla-services/fx-sig-verify/tree/v0.2.5
