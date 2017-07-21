@@ -287,10 +287,12 @@ class MozSignedObjectViaLambda(MozSignedObject):
         except Exception as e:
             self.add_error("failed to process s3 object {}/{} '{}'"
                            .format(self.bucket_name, self.key_name, repr(e)))
-            self.add_message("First get failed, trying to unescape")
-            self.add_message(str(s3_client.list_objects_v2(Bucket=self.bucket_name)))
+            # issue #14 - the below decode majik is from AWS sample code.
+            new_key = urllib.unquote_plus(self.key_name.encode('utf8'))
+            self.add_message("First get failed ({}), trying to unquote"
+                             " ({})".format(self.key_name, new_key))
             result = s3_client.get_object(Bucket=self.bucket_name,
-                                          Key=urllib.unquote_plus(self.key_name))
+                                          Key=new_key)
             self.add_message("get_object worked after unescaping")
 
         debug("after s3_client.get_object() result={}".format(type(result)))
