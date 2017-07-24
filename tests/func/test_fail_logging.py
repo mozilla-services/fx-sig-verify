@@ -20,6 +20,16 @@ def disable_xray():
     # at the moment, 'moto' doesn't support xray, so I've hacked fleece to allow
     # an environment variable to disable them.
     os.environ['XRAY_DISABLE'] = 'True'
+    # AWS Region must be valid - the API endpoint is looked up even
+    # with offline testing
+    os.environ['AWS_DEFAULT_REGION'] = 'us-east-1'
+    # Specify bogus credentials to avoid credential lookup
+    os.environ['AWS_ACCESS_KEY_ID'] = 'bogus'
+    os.environ['AWS_SECRET_ACCESS_KEY'] = 'bogus'
+    os.environ['AWS_SECURITY_TOKEN'] = 'bogus'
+    os.environ['AWS_SESSION_TOKEN'] = 'bogus'
+    #os.environ['AWS_PROFILE'] = ''
+
 
 
 def build_event(bucket, key):
