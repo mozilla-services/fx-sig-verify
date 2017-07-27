@@ -1,6 +1,22 @@
 Changelog
 =========
 
+`0.3.0`__
+-----------------------------------------
+__ https://github.com/mozilla-services/fx-sig-verify/tree/v0.3.0
+
+  - CloudWatch logs in json, limited length. Breaks prior analysis
+    scripts.
+
+  - CloudWatch logs not being in json make the log analysis too hard. This
+    will change yet again as it's moved into mozlog format.
+
+  - Also, on S3 failures, logging the exception text (repr()) generated
+    extremely large log messages. These exceeded the max allowed length of
+    256K bytes! Now those messages are truncated to 256 characters.
+
+  - Set more complete offline test environment
+
 `0.2.6`__
 -----------------------------------------
 __ https://github.com/mozilla-services/fx-sig-verify/tree/v0.2.6

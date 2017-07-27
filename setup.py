@@ -24,11 +24,12 @@ def read(*names, **kwargs):
 
 setup(
     name='fx_sig_verify',
-    version='0.2.6',
+    version='0.3.0',
     license='MPL',
     description='AWS Lambda to check code signatures.',
     long_description='%s\n%s' % (
-        re.compile('^.. start-badges.*^.. end-badges', re.M | re.S).sub('', read('README.rst')),
+        re.compile('^.. start-badges.*^.. end-badges',
+                   re.M | re.S).sub('', read('README.rst')),
         re.sub(':[a-z]+:`~?(.*?)`', r'``\1``', read('CHANGELOG.rst'))
     ),
     author='Hal Wine',
@@ -82,13 +83,13 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'fx-sig-verify = fx_sig_verify.cli:main',
-            'print-pe-certs = fx_sig_verify.verify_sigs.print_pe_certs:main',
-        ]
+            'fx-sig-verify = fx_sig_verify.cli:main [cli]',
+            ('print-pe-certs ='
+             ' fx_sig_verify.verify_sigs.print_pe_certs:main [cli]'),
+        ],
+        'scripts': ['analyze_cloudwatch = analyze_cloudwatch [cli]'],
     },
     dependency_links=[
-        "file:////tmp/fx-sig-verify/pip_downloads",
-        "https://github.com/hwine/verify-sigs/tarball/wip_hal#egg=verify_sigs=0.2.6",
         ],
     lambda_module="verify_sigs",
 )
