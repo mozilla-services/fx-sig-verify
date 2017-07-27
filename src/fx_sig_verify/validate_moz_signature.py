@@ -4,8 +4,9 @@ from fleece.xray import (monkey_patch_botocore_for_xray,
                          trace_xray_subsegment)
 # import boto3
 from io import BytesIO
-import os
 import datetime
+import json
+import os
 import time
 import urllib
 
@@ -285,8 +286,9 @@ class MozSignedObjectViaLambda(MozSignedObject):
             result = s3_client.get_object(Bucket=self.bucket_name,
                                           Key=self.key_name)
         except Exception as e:
+            text = repr(e)[:256]
             self.add_error("failed to process s3 object {}/{} '{}'"
-                           .format(self.bucket_name, self.key_name, repr(e)))
+                           .format(self.bucket_name, self.key_name, text))
             # issue #14 - the below decode majik is from AWS sample code.
             new_key = urllib.unquote_plus(self.key_name.encode('utf8'))
             self.add_message("First get failed ({}), trying to unquote"
@@ -318,9 +320,10 @@ class MozSignedObjectViaLambda(MozSignedObject):
             if isinstance(e, SigVerifyException):
                 self.add_error("Failure reason: {}".format(type(e).__name__))
             else:
+                text = repr(e)[:256]
                 self.add_error("failed to process s3 object {}/{} '{}'"
                                .format(self.bucket_name, self.key_name,
-                                       repr(e)))
+                                       text))
         self.set_status("pass" if valid_sig else "fail", only_if_unset=True)
         return valid_sig
 
@@ -405,7 +408,7 @@ def lambda_handler(event, context):
     MozSignedObject.set_verbose()
     response = {'version': fx_sig_verify.__version__,
                 'input_event': event,
-                'request_id' : context.aws_request_id,
+                'request_id': context.aws_request_id,
                 }
     results = []
     for record in event['Records']:
@@ -450,5 +453,6 @@ def lambda_handler(event, context):
         results.append(artifact.summary())
     response['results'] = results
     # always output response to CloudWatch (issue #17)
-    print(response)
+    # in json format
+    print(json.dumps(response))
     return response
