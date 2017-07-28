@@ -1,6 +1,14 @@
 Changelog
 =========
 
+`0.3.1`__
+-----------------------------------------
+__ https://github.com/mozilla-services/fx-sig-verify/tree/v0.3.1
+
+- Pinned pyasn1 to avoid new version with bug__ - it works again!
+
+__ https://github.com/etingof/pyasn1/issues/55
+
 `0.3.0`__
 -----------------------------------------
 __ https://github.com/mozilla-services/fx-sig-verify/tree/v0.3.0
