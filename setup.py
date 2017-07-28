@@ -70,7 +70,7 @@ setup(
 
     install_requires=[
         # eg: 'aspectlib==1.1.1', 'six>=1.7',
-        "pyasn1",
+        "pyasn1==0.2.3",
         "M2Crypto",
         "fleece",
         # verify-sigs is vendored in, so not listed here
