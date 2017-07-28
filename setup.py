@@ -65,7 +65,6 @@ setup(
         # eg: 'keyword1', 'keyword2', 'keyword3',
     ],
     setup_requires=[  # "lambda-setuptools",
-                    "boto3",
                     ],
 
     install_requires=[
@@ -80,14 +79,15 @@ setup(
         # eg:
         #   'rst': ['docutils>=0.11'],
         #   ':python_version=="2.6"': ['argparse'],
+        'cli': [],
     },
     entry_points={
         'console_scripts': [
             'fx-sig-verify = fx_sig_verify.cli:main [cli]',
             ('print-pe-certs ='
              ' fx_sig_verify.verify_sigs.print_pe_certs:main [cli]'),
+            'analyze_cloudwatch = analyze_cloudwatch:main [cli]',
         ],
-        'scripts': ['analyze_cloudwatch = analyze_cloudwatch [cli]'],
     },
     dependency_links=[
         ],
