@@ -9,7 +9,8 @@ env:
     - TOXENV=check
     - TOXENV=docs
 
-    - TOXENV=py27,report,coveralls,codecov
+      # - TOXENV=py27,report,coveralls,codecov
+    - TOXENV=py27,report,codecov
 
 before_install:
   - python --version
