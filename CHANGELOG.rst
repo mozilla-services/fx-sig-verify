@@ -1,6 +1,38 @@
 Changelog
 =========
 
+`0.3.2`__
+-----------------------------------------
+__ https://github.com/mozilla-services/fx-sig-verify/tree/v0.3.2
+
+- Only validate certain files in production.
+
+  The entire build tree is pushed to production. That includes several exe
+  files that are only used during build, and are not signed at all.
+
+  The choices were to either to:
+
+   a) explicitly exclude the known dev files, or
+   b) only include the exes we know we ship.
+
+  This commit uses approach (b), restricting validation to only those we
+  expect to ship. This is not fail safe, but I don't have a better
+  solution at this time. It can be mitigated by post processing the logs
+  on a regular basis.
+
+  Once that filter is in place, it becomes much harder to test. A flag can
+  be set to disable the filter, and validate all files. This is fail safe,
+  as a wrong setting in production will generate alerts. (Hopefully not at
+  0300.)
+
+- Add analysis script for CloudWatch logs. With dev installs,
+  ``analyze_cloudwatch`` will be in the path.
+
+- Miscellaneous papercuts bandaged:
+
+      - Disable coveralls until time to fix.
+      - Dev environment cleanup with ignores, etc.
+
 `0.3.1`__
 -----------------------------------------
 __ https://github.com/mozilla-services/fx-sig-verify/tree/v0.3.1
