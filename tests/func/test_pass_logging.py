@@ -10,9 +10,19 @@ from fx_sig_verify.validate_moz_signature import (lambda_handler, )  # noqa: E40
 # Constants
 bucket_name = 'pseudo-bucket'
 sqs_name = "test-queue"
+
+
 class DummyContext(object):
     aws_request_id = 'DUMMY ID'
+
+
 dummy_context = DummyContext()
+
+
+@pytest.fixture(scope='module', autouse=True)
+def disable_production_filtering():
+    # we want to process "invalid" files during testing
+    os.environ['PRODUCTION'] = "0"
 
 
 @pytest.fixture(scope='module', autouse=True)

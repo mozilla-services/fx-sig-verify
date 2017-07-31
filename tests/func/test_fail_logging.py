@@ -9,11 +9,21 @@ from fx_sig_verify.validate_moz_signature import (lambda_handler, )  # noqa: E40
 
 # Constants
 bucket_name = 'pseudo-bucket'
-key_name = '32bit.exe'
 sqs_name = "test-queue"
+
+
 class DummyContext(object):
     aws_request_id = 'DUMMY ID'
+
+
 dummy_context = DummyContext()
+
+
+@pytest.fixture(scope='module', autouse=True)
+def disable_production_filtering():
+    # we want to process "invalid" files during testing
+    os.environ['PRODUCTION'] = "0"
+
 
 @pytest.fixture(scope='module', autouse=True)
 def disable_xray():
@@ -28,8 +38,6 @@ def disable_xray():
     os.environ['AWS_SECRET_ACCESS_KEY'] = 'bogus'
     os.environ['AWS_SECURITY_TOKEN'] = 'bogus'
     os.environ['AWS_SESSION_TOKEN'] = 'bogus'
-    #os.environ['AWS_PROFILE'] = ''
-
 
 
 def build_event(bucket, key):
@@ -94,8 +102,8 @@ def create_bucket():
 def upload_file(bucket, filename):
     data_dir = os.path.join(os.path.dirname(__file__), '..', 'data')
     fname = os.path.join(data_dir, filename)
-    bucket.put_object(Body=open(fname, 'r'), Key=key_name)
-    return [(bucket_name, key_name), ]
+    bucket.put_object(Body=open(fname, 'r'), Key=filename)
+    return [(bucket_name, filename), ]
 
 
 def setup_aws_mocks():
