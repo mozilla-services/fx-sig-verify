@@ -60,9 +60,26 @@ class MozSignedObject(object):
 
     # simplify debugging - can be set via environ
     verbose = 0
+    production_criteria = True
+
+    @classmethod
+    def set_production_criteria(cls, production_override=None):
+        # reset - testing issue, not production, as new class isn't created
+        cls.production_criteria = True
+        if production_override is None:
+            production_override = os.environ.get('PRODUCTION')
+            print('PRODUCTION={}'.format(production_override))
+        if production_override is not None:
+            try:
+                cls.production_criteria = int(production_override)
+            except ValueError:
+                cls.production_criteria = False if production_override else True
+            print("production criteria {} based on {}"
+                  .format(bool(cls.production_criteria), production_override))
 
     @classmethod
     def set_verbose(cls, verbose_override=None):
+        cls.set_production_criteria()
         # reset - testing issue, not production, as new class isn't created
         cls.verbose = 0
         if not verbose_override:
@@ -138,6 +155,37 @@ class MozSignedObject(object):
             len_ = objf.tell()
             objf.seek(0, 0)
             print("Processing file of size {} (at {})".format(len_, cur_pos))
+
+    def should_validate(self):
+        """
+        Filter out any items that should not be checked. Decision is made on
+        information already in the object.
+        """
+        if not self.production_criteria:
+            # We're in test mode, process everything
+            return True
+
+        # Current criteria is based on prefix of filename. We include the two
+        # know good names, rather than exclude the two currently known
+        # exceptions (mar.exe & mbsdiff.exe) to reduce false positives (since a
+        # invalid exe will page someone).
+        def startswithoneof(fname, prefixes):
+            result = False
+            for prefix in prefixes:
+                if fname.startswith(prefix):
+                    result = True
+                    break
+            return result
+
+        allowed_prefixes = [
+            "Firefox",      # used for Beta & GA releases
+            "firefox",      # used for nightly & dep builds
+        ]
+        basename = os.path.basename(self.artifact_name)
+        do_validation = startswithoneof(basename, allowed_prefixes)
+        if not do_validation:
+            self.add_message("Excluded from validation by prefix")
+        return do_validation
 
     @trace_xray_subsegment()
     def check_exe(self):
@@ -313,8 +361,10 @@ class MozSignedObjectViaLambda(MozSignedObject):
     def process_one_s3_file(self):
         if self.verbose:
             print('Processing {}' .format(self.artifact_name))
+        valid_sig = True
         try:
-            valid_sig = self.check_exe()
+            if self.should_validate():
+                valid_sig = self.check_exe()
         except Exception as e:
             valid_sig = False
             if isinstance(e, SigVerifyException):

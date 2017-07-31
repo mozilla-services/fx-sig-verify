@@ -87,6 +87,7 @@ def main(cmd_line=None):
     :returns result_code: 0 if no failure, per unix conventions
     """
     MozSignedObject.set_verbose(True)
+    MozSignedObject.set_production_criteria(False)
     args = parse_args(cmd_line=cmd_line)
     artifact = MozSignedObjectViaCLI(args.suspect[0])
     try:
