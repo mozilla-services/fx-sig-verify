@@ -195,6 +195,7 @@ class MozSignedObject(object):
 
         This code mostly lifted from
             src/fx_sig_verify/verify_sigs/print_pe_certs.py
+
         with print statements removed :)
 
         :returns boolean: True if object has passed all tests.

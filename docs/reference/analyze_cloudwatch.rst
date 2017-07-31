@@ -12,6 +12,6 @@ analyze_cloudwatch
 validate_moz_signature
 ----------------------
 
-.. automodule:: analyze_cloudwatch.main
+.. automodule:: analyze_cloudwatch
    :members:
 
