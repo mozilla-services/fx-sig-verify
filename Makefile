@@ -21,8 +21,14 @@ publish: upload
 
 .PHONY: invoke
 invoke:
-	@rm -f test_output.json
-	aws lambda invoke --function-name hwine_ffsv_dev --payload "$$(cat tests/data/S3_event_template.json)" test_output.json ; jq . test_output.json
+	@rm -f invoke_output.json
+	aws lambda invoke \
+		--function-name hwine_ffsv_dev \
+		--payload "$$(cat tests/data/S3_event_template.json)" \
+		invoke_output.json ; \
+	    if test -s invoke_output.json; then \
+		jq . invoke_output.json ; \
+	    fi
 
 # idea from
 # https://stackoverflow.com/questions/23032580/reinstall-virtualenv-with-tox-when-requirements-txt-or-setup-py-changes#23039826
@@ -40,7 +46,7 @@ Dockerfile.dev-environment.built: Dockerfile.dev-environment
 	docker images $(DEV_IMAGE_NAME) >$@
 	test -s $@ || rm $@
 
-Dockerfile.build-environment: Dockerfile.dev-environment.built $(shell find . -name \*.py)
+Dockerfile.build-environment: Dockerfile.dev-environment.built $(shell find src -name \*.py)
 	touch $@
 
 Dockerfile.build-environment.built: Dockerfile.build-environment
