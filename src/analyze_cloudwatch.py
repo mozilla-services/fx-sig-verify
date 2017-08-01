@@ -13,12 +13,13 @@ REPORT_STARTER = 'REPORT'
 
 JSON_OUTPUT = """
 {pass:6,d} passed
+        {Excluded:10,d} exe's not validated
 {SigVerifyNoSignature:10,d} exe without signature
 {SigVerifyBadSignature:10,d} exe with bad signature
 {SigVerifyNonMozSignature:10,d} exe with non-Mozilla signature
-    {S3RetrievalFailure:10,d} that couldn't be retrieved from S3
-    {S3UnquoteRetry:10,d} that were retried after unquoting
-    {S3UnquoteSuccess:10,d} that then succeeded
+        {S3RetrievalFailure:10,d} that couldn't be retrieved from S3
+        {S3UnquoteRetry:10,d} that were retried after unquoting
+        {S3UnquoteSuccess:10,d} that then succeeded
 {other:10,d} other failures
        ---
 {fail:6,d} total failed
@@ -47,11 +48,15 @@ class JsonSummerizer(Summerizer):
     """
     extract JSON data
     """
-    def __init__(self):
+    def __init__(self, summarize):
         self.data = []
+        self.summarize = summarize
 
     def add_line(self, line):
-        self.data.append(json.loads(line))
+        if self.summarize:
+            self.data.append(json.loads(line))
+        else:
+            print(line, end='')
 
     def print_final_report(self):
         self.compute_totals()
@@ -102,6 +107,9 @@ class JsonSummerizer(Summerizer):
                     incr(counts,
                          isin(reasons, 'get_object worked'),
                          "S3UnquoteSuccess")
+                    incr(counts,
+                         isin(reasons, 'Excluded from validation by prefix'),
+                         "Excluded")
                 except IndexError:
                     pass
         # compute uncategorized failures
@@ -111,9 +119,9 @@ class JsonSummerizer(Summerizer):
         self.counts = counts
 
 
-def summerizer_factory(starter):
+def summerizer_factory(starter, summarize):
     if starter == JSON_STARTER:
-        return JsonSummerizer()
+        return JsonSummerizer(summarize)
     elif starter is None:
         return Summerizer()
     else:
@@ -145,7 +153,7 @@ def main(argv=None):
     if argv is None:
         argv = sys.argv
     args, rest = parse_args(argv)
-    summary = summerizer_factory(args.starter)
+    summary = summerizer_factory(args.starter, args.summarize)
     for l in filter_for_line_type(args.starter, fileinput.input(rest[1:])):
         summary.add_line(l)
     if args.summarize:
