@@ -11,7 +11,7 @@ Overview
       - |docs|
     * - tests
       - |travis| |coveralls| |codecov|
-    * - package
+    * - version status
       - |commits-since|
 
 
@@ -20,7 +20,7 @@ Overview
       - |version| |downloads| |wheel| |supported-versions| |supported-implementations| |commits-since|
 
 .. |docs| image:: https://readthedocs.org/projects/fx-sig-verify/badge/?style=flat
-    :target: https://readthedocs.org/projects/fx-sig-verify
+    :target: https://fx-sig-verify.readthedocs.io/fx-sig-verify
     :alt: Documentation Status
 
 .. |travis| image:: https://travis-ci.org/mozilla-services/fx-sig-verify.svg?branch=master
@@ -66,14 +66,25 @@ Overview
 
 .. end-badges
 
-AWS Lambda to check code signatures.
+AWS Lambda to check code signatures to verify both presence and "signed
+by Mozilla" status.
 
 Installation
 ============
 
-::
+There are three deployment scenarios for ``fx-sig_verify``:
 
-    pip install fx-sig-verify
+- As an AWS Lambda function - see :ref:`Lambda Installation` for the
+  details.
+- As a set of command line tools to facilitate usage and operation of
+  the Lambda function::
+
+      pip install https://github.com/mozilla-services/fx-sig-verify
+
+  See :ref:usage for more details on command line tools
+
+- In `development`_ mode (see below).
+
 
 Documentation
 =============
@@ -83,7 +94,25 @@ https://fx-sig-verify.readthedocs.io/
 Development
 ===========
 
-To run the all tests run::
+At present, ``fx-sig-verify`` is python 2.7 only.
+
+Typical development setup, using a local virtual environment::
+
+    git clone https://github.com/mozilla-services/fx-sig-verify
+    cd fx-sig-verify
+    virtualenv --python python2.7 venv
+    source venv/bin/activate
+    pip install --requirements requirements-dev.txt
+
+Local Testing
+-------------
+
+The local test runner is ``pytest``, with all local tests in the ``tests/``
+subdirectory. To run just the tests, use::
+
+    py.test tests
+
+To run the full CI suite, including document generation, use::
 
     tox
 
@@ -103,3 +132,9 @@ Note, to combine the coverage data from all the tox environments run:
       - ::
 
             PYTEST_ADDOPTS=--cov-append tox
+
+AWS Testing
+-----------
+
+Testing on AWS requires an AWS account. Refer to :ref:`Lambda
+Installation` for details.

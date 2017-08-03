@@ -27,3 +27,39 @@ That provides the following scripts:
     This script is from the original code, and is the source of the
     logic for the lambda function. It will print out the certificate
     chain for any file.
+
+print-pe-certs
+--------------
+
+This script is from the `original source`__. It prints the certificate
+metadata and calculated hashes from the supplied ``exe`` file. This is
+useful for determining the exact validation cause.
+
+fx-sig-verify
+-------------
+
+This executes the production code from the command line. The primary
+difference is the return values are not in the JSON format. An exit code
+of not-zero is used for any failure, so the script can be used from
+other scripts.
+
+analyze_cloudwatch
+------------------
+
+In production, the primary logging is done to Cloud Watch. This script
+analyzes raw Cloud Watch logs (downloaded via a utility like awslogs__).
+Cloud Watch logs for lambda function contain 2 types of information: AWS invocation
+logging (when, ID, resource usage) as plain text records, and any
+information written to standard out by the Lambda function. Currently,
+the function outputs JSON for invocation status, and plain text for
+debug records.
+
+__ https://github.com/jorgebastida/awslogs
+
+The script performs 2 functions:
+
+    - extracts either the billing or invocation status records for
+      further processing
+    - provides a brief summary of either type.
+
+__ :ref:`base library`

@@ -6,7 +6,9 @@ Contents
    :maxdepth: 2
 
    readme
+   overview
    installation
+   installation-on-aws.rst
    usage
    reference/index
    contributing
