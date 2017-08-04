@@ -101,79 +101,87 @@ def check_exe(data_file):
     # times, e.g. by different entities. Each of them adds a complete SignedData
     # blob to the binary.
     # TODO(user): Process all instances
-    signed_data = signed_datas[0]
     if len(signed_datas) > 1:
         print("Found {:d} signed datas".format(len(signed_datas)))
+    for signed_data in signed_datas:
 
-    blob = pecoff_blob.PecoffBlob(signed_data)
+        print("============ Start Signed Data =============")
+        try:
+            blob = pecoff_blob.PecoffBlob(signed_data)
 
-    auth = auth_data.AuthData(blob.getCertificateBlob())
-    content_hasher_name = auth.digest_algorithm().name
-    computed_content_hash = signed_pecoff[content_hasher_name]
+            auth = auth_data.AuthData(blob.getCertificateBlob())
+            content_hasher_name = auth.digest_algorithm().name
+            computed_content_hash = signed_pecoff[content_hasher_name]
 
-    try:
-        auth.ValidateAsn1()
-        auth.ValidateHashes(computed_content_hash)
-        auth.ValidateSignatures()
-        auth.ValidateCertChains(time.gmtime())
-    except auth_data.Asn1Error:
-        if auth.openssl_error:
-            print('OpenSSL Errors:\n%s' % auth.openssl_error)
-        raise
+            try:
+                auth.ValidateAsn1()
+                auth.ValidateHashes(computed_content_hash)
+                auth.ValidateSignatures()
+                auth.ValidateCertChains(time.gmtime())
+            except auth_data.Asn1Error:
+                if auth.openssl_error:
+                    print('OpenSSL Errors:\n%s' % auth.openssl_error)
+                raise
 
-    # TODO - validate if this is okay for now.
-    # base validity on some combo of auth fields.
-    print('Program: %s, URL: %s' % (auth.program_name, auth.program_url))
-    if auth.has_countersignature:
-        print('Countersignature is present. Timestamp: %s UTC' %
-              time.asctime(time.gmtime(auth.counter_timestamp)))
-    else:
-        print('Countersignature is not present.')
+            # TODO - validate if this is okay for now.
+            # base validity on some combo of auth fields.
+            print('Program: %s, URL: %s' % (auth.program_name,
+                                            auth.program_url))
+            if auth.has_countersignature:
+                print('Countersignature is present. Timestamp: %s UTC' %
+                      time.asctime(time.gmtime(auth.counter_timestamp)))
+            else:
+                print('Countersignature is not present.')
 
-    print('Binary is signed with cert issued by:')
-    pprint.pprint(auth.signing_cert_id)
-    print
+            print('Binary is signed with cert issued by:')
+            pprint.pprint(auth.signing_cert_id)
+            print
 
-    print('Cert chain head issued by:')
-    pprint.pprint(auth.cert_chain_head[2])
-    print('  Chain not before: %s UTC' %
-          (time.asctime(time.gmtime(auth.cert_chain_head[0]))))
-    print('  Chain not after: %s UTC' %
-          (time.asctime(time.gmtime(auth.cert_chain_head[1]))))
-    print
+            print('Cert chain head issued by:')
+            pprint.pprint(auth.cert_chain_head[2])
+            print('  Chain not before: %s UTC' %
+                  (time.asctime(time.gmtime(auth.cert_chain_head[0]))))
+            print('  Chain not after: %s UTC' %
+                  (time.asctime(time.gmtime(auth.cert_chain_head[1]))))
+            print
 
-    if auth.has_countersignature:
-        print('Countersig chain head issued by:')
-        pprint.pprint(auth.counter_chain_head[2])
-        print('  Countersig not before: %s UTC' %
-              (time.asctime(time.gmtime(auth.counter_chain_head[0]))))
-        print('  Countersig not after: %s UTC' %
-              (time.asctime(time.gmtime(auth.counter_chain_head[1]))))
-        print
+            if auth.has_countersignature:
+                print('Countersig chain head issued by:')
+                pprint.pprint(auth.counter_chain_head[2])
+                print('  Countersig not before: %s UTC' %
+                      (time.asctime(time.gmtime(auth.counter_chain_head[0]))))
+                print('  Countersig not after: %s UTC' %
+                      (time.asctime(time.gmtime(auth.counter_chain_head[1]))))
+                print
 
-    print('Certificates')
-    for (issuer, serial), cert in auth.certificates.items():
-        print('  Issuer: %s' % issuer)
-        print('  Serial: %s' % serial)
-        subject = cert[0][0]['subject']
-        subject_dn = str(dn.DistinguishedName.TraverseRdn(subject[0]))
-        print('  Subject: %s' % subject_dn)
-        not_before = cert[0][0]['validity']['notBefore']
-        not_after = cert[0][0]['validity']['notAfter']
-        not_before_time = not_before.ToPythonEpochTime()
-        not_after_time = not_after.ToPythonEpochTime()
-        print('  Not Before: %s UTC (%s)' %
-              (time.asctime(time.gmtime(not_before_time)), not_before[0]))
-        print('  Not After: %s UTC (%s)' %
-              (time.asctime(time.gmtime(not_after_time)), not_after[0]))
-        bin_cert = der_encoder.encode(cert)
-        print('  MD5: %s' % hashlib.md5(bin_cert).hexdigest())
-        print('  SHA1: %s' % hashlib.sha1(bin_cert).hexdigest())
-        print
+            print('Certificates')
+            for (issuer, serial), cert in auth.certificates.items():
+                print('  Issuer: %s' % issuer)
+                print('  Serial: %s' % serial)
+                subject = cert[0][0]['subject']
+                subject_dn = str(dn.DistinguishedName.TraverseRdn(subject[0]))
+                print('  Subject: %s' % subject_dn)
+                not_before = cert[0][0]['validity']['notBefore']
+                not_after = cert[0][0]['validity']['notAfter']
+                not_before_time = not_before.ToPythonEpochTime()
+                not_after_time = not_after.ToPythonEpochTime()
+                print('  Not Before: %s UTC (%s)' %
+                      (time.asctime(time.gmtime(not_before_time)),
+                       not_before[0]))
+                print('  Not After: %s UTC (%s)' %
+                      (time.asctime(time.gmtime(not_after_time)), not_after[0]))
+                bin_cert = der_encoder.encode(cert)
+                print('  MD5: %s' % hashlib.md5(bin_cert).hexdigest())
+                print('  SHA1: %s' % hashlib.sha1(bin_cert).hexdigest())
+                print
 
-    if auth.trailing_data:
-        print('Signature Blob had trailing (unvalidated) data (%d bytes): %s' %
-              (len(auth.trailing_data), auth.trailing_data.encode('hex')))
+            if auth.trailing_data:
+                print('Signature Blob had trailing (unvalidated) data (%d '
+                      'bytes): %s' % (len(auth.trailing_data),
+                                      auth.trailing_data.encode('hex')))
+        except Exception as e:
+            print("Catching {}".format(str(e)))
+        print("============ End Signed Data =============")
 
 
 if __name__ == '__main__':
