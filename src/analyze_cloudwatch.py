@@ -7,9 +7,26 @@ import json
 import logging
 import optparse
 import sys
+import re
+
+# below should probably be a parameter to the app
+CONFIGURED_MAX_RUN_TIME_MS = 60 * 1000
 
 JSON_STARTER = '{'
 REPORT_STARTER = 'REPORT'
+
+PERF_OUTPUT = """
+{invocations:19,d} runs
+{total_time:19,.0f} milliseconds execution time
+{bill_time:19,.0f} milliseconds billed
+{average_time:19,.0f} average milliseconds per run
+{max_memory_invocations:19,d} times we used all memory
+    {max_memory_pcnt:19.0f}% of runs maxing out memory
+    {avg_memory:19,d} MBi (not yet computed)
+{max_time_invocations:19,d} times run aborted for excessive time
+    {max_time_pcnt:19.0f}% of runs exceeding time limit
+    {retry_never_succeeded:19,d} times retry did not succeed
+""".strip()
 
 JSON_OUTPUT = """
 {pass:6,d} passed
@@ -119,9 +136,79 @@ class JsonSummerizer(Summerizer):
         self.counts = counts
 
 
+class MetricSummerizer(Summerizer):
+    """
+    Accumulate Metrics from the 'REPORT' text line
+    """
+
+    report_pattern = re.compile(r'''  # noqa
+                                ^REPORT\s+
+                                RequestId:\s+(?P<request_id>\S+)\s+  # a2f5e4c9-76ed-11e7-90a2-d7d797025d0c
+                                Duration:\s+(?P<real_time>\S+)\s+ms\s+
+                                Billed\sDuration:\s+(?P<bill_time>\d+)\s+ms\s+
+                                Memory\sSize:\s+(?P<mem_allocated>\d+)\s+MB\s+
+                                Max\sMemory\sUsed:\s+(?P<mem_used>\d+)\s+MB
+                                \s*''', re.VERBOSE)
+
+    def __init__(self, summarize=False):
+        self.summarize = summarize
+        self.retried_requests = collections.defaultdict(int)
+        self.counts = {
+            "invocations": 0,
+            "total_time": 0,
+            "bill_time": 0,
+            "average_time": 0,
+            "max_memory_invocations": 0,
+            "max_memory_pcnt": 0,
+            "avg_memory": 0,
+            "max_time_invocations": 0,
+            "max_time_pcnt": 0,
+        }
+
+    def add_line(self, line):
+        if not self.summarize:
+            print(line.strip())
+            return
+        match = self.report_pattern.match(line.strip())
+        if not match:
+            raise SyntaxError("Unexpected format: '{}'".format(line.strip()))
+        self.counts["invocations"] += 1
+        self.counts["total_time"] += float(match.group('real_time'))
+        self.counts["bill_time"] += float(match.group('bill_time'))
+        if match.group('mem_allocated') == match.group('mem_used'):
+            self.counts["max_memory_invocations"] += 1
+        rq_id = match.group('request_id')
+        if float(match.group('real_time')) >= CONFIGURED_MAX_RUN_TIME_MS:
+            self.counts["max_time_invocations"] += 1
+            self.retried_requests[rq_id] += 1
+            logger.warn("Time exceeded for request {} ('{}')"
+                        .format(rq_id, match.group('real_time')))
+        elif self.retried_requests[rq_id] > 0:
+            logger.warn("Retry successful for request {} (failed {} times)"
+                        .format(rq_id, self.retried_requests[rq_id]))
+            self.retried_requests[rq_id] -= 1
+
+    def print_final_report(self):
+        self.compute_totals()
+        print(PERF_OUTPUT.format(**self.counts))
+
+    def compute_totals(self):
+        c = self.counts
+        c["average_time"] = c["total_time"] / c["invocations"]
+        c["max_memory_pcnt"] = (c["max_memory_invocations"] * 100
+                                / c["invocations"])
+        c["max_time_pcnt"] = c["max_time_invocations"] * 100 / c["invocations"]
+        c["retry_never_succeeded"] = len([k for k, v in
+                                          self.retried_requests.iteritems() if v
+                                          > 0])
+        self.counts = c
+
+
 def summerizer_factory(starter, summarize):
     if starter == JSON_STARTER:
         return JsonSummerizer(summarize)
+    elif starter is REPORT_STARTER:
+        return MetricSummerizer(summarize)
     elif starter is None:
         return Summerizer()
     else:
@@ -150,6 +237,7 @@ def parse_args(argv=None):
 
 
 def main(argv=None):
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s')
     if argv is None:
         argv = sys.argv
     args, rest = parse_args(argv)
@@ -161,5 +249,4 @@ def main(argv=None):
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s')
     raise SystemExit(main(sys.argv))
