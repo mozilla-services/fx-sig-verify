@@ -84,7 +84,6 @@ def bad_files():
 def good_files():
     payload = ['32bit.exe',  # signed with older valid key
                '32bit_new.exe',  # signed with current valid key
-               '32bit+new.exe',  # valid, but S3 naming issue (issue #14)
                ]
     print(payload)
     return payload

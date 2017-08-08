@@ -42,9 +42,10 @@ def build_event(bucket, key):
 
 @pytest.fixture()
 def good_files():
-    payload = ['32bit.exe',  # signed with older valid key
-               '32bit_new.exe',  # signed with current valid key
-               '32bit+new.exe',  # valid, but S3 naming issue (issue #14)
+    payload = [('32bit.exe', None),  # signed with older valid key
+               ('32bit_new.exe', None),  # signed with current valid key
+               # valid, but tests S3 naming issue (issue #14)
+               ('32bit_new.exe', '32bit new.exe'),
                ]
     print(payload)
     return payload
@@ -94,14 +95,18 @@ def create_bucket():
     return bucket
 
 
-def upload_file(bucket, filename):
+def upload_file(bucket, ftuple):
+    # issue #14 requires a difference to test
+    filename, key_name = ftuple
+    if key_name is None:
+        key_name = filename
     data_dir = os.path.join(os.path.dirname(__file__), '..', 'data')
     fname = os.path.join(data_dir, filename)
-    # to replicate S3 functionality, change any space in file name to a '+'
-    # see issue #14
-    key_name = filename.replace(' ', '+')
     bucket.put_object(Body=open(fname, 'r'), Key=key_name)
-    return [(bucket_name, filename), ]
+    # S3 helpfully gives us the key with '+', but expects back with ' ', so
+    # mimic that behavior
+    s3name = key_name.replace('+', ' ')
+    return (bucket_name, s3name)
 
 
 def setup_aws_mocks():
@@ -140,8 +145,8 @@ def test_pass_no_message_when_no_verbose(set_verbose_false, good_files):
         falsey()
         # WHEN a good file is processed
         for fname in good_files:
-            upload_file(bucket, fname)
-            event = build_event(bucket.name, fname)
+            bucket_name, key_name = upload_file(bucket, fname)
+            event = build_event(bucket_name, key_name)
             response = lambda_handler(event, dummy_context)
             # THEN there should be no message
             count, msg = get_one_message(queue)
@@ -167,8 +172,8 @@ def test_pass_message_when_verbose(set_verbose_true, good_files):
         truthy()
         # WHEN a good file is processed
         for fname in good_files:
-            upload_file(bucket, fname)
-            event = build_event(bucket.name, fname)
+            bucket_name, key_name = upload_file(bucket, fname)
+            event = build_event(bucket_name, key_name)
             response = lambda_handler(event, dummy_context)
             print("response:", response)
             # THEN there should be no message
