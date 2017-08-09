@@ -380,6 +380,11 @@ class MozSignedObjectViaLambda(MozSignedObject):
 
     @trace_xray_subsegment()
     def send_sns(self, msg, e=None, reraise=False):
+        # use first line of incoming msg as subject
+        subject = msg.split('\n')[0]
+        # append bucket & key, short key first
+        msg += "\n{}\nkey={}\nbucket={}".format(os.path.basename(self.key_name),
+                                                self.key_name, self.bucket_name)
         # hack to get traceback in email
         if e:
             import traceback
@@ -395,7 +400,9 @@ class MozSignedObjectViaLambda(MozSignedObject):
             # set flag so we don't re-raise
             topic_arn = "no-topic-arn"
             raise KeyError("Missing 'SNSARN' from environment")
-        response = client.publish(Message=msg, TopicArn=topic_arn)  # noqa: W0612
+        response = client.publish(Message=msg, Subject=subject,
+                                  TopicArn=topic_arn)
+        debug("sns publish: '{}'".format(response))
 
 
 class SigVerifyException(Exception):
