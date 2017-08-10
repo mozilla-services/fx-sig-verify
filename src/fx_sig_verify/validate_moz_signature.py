@@ -291,6 +291,25 @@ class MozSignedObjectViaLambda(MozSignedObject):
         self.key_name = key
         self.artifact_name = "s3://{}/{}".format(bucket, key)
 
+        self.had_s3_error = False
+        # S3 is an "eventually consistent" object store. Which leads to the
+        # rare, but observed, case where the first S3 get will fail with
+        # "NoSuchObject".
+        #
+        # The good news is S3/Lambda will retry the event 3 times, but IFF the
+        # Lambda function fails. We want to catch all errors (if possible), so
+        # we can provide better logging. Hence the approach of adding an S3
+        # error flag (above), and using that to raise IOError after doing all
+        # our reporting (below).
+        #
+        # This "works well" in practice, as production payloads only contain one
+        # S3 event per invocation at this time. However, the event message will
+        # show support multiple objects per invocation. Currently, we only use
+        # the multi-object mode for testing. If S3 starts using multi-object
+        # mode, we would cause retry of all of the objects, not just the
+        # failing object. Any problem this might cause will be reported by the
+        # analyze_cloudwatch script.
+
     def get_location(self):
         "For S3, we need the bucket & key names"
         return self.bucket_name, self.key_name
@@ -336,6 +355,7 @@ class MozSignedObjectViaLambda(MozSignedObject):
                                           Key=self.key_name)
         except Exception as e:
             text = repr(e)[:256]
+            self.had_s3_error = True
             self.add_error("failed to process s3 object {}/{} '{}'"
                            .format(self.bucket_name, self.key_name, text))
             # issue #14 - the below decode majik is from AWS sample code.
@@ -513,4 +533,7 @@ def lambda_handler(event, context):
     # always output response to CloudWatch (issue #17)
     # in json format
     print(json.dumps(response))
+    # AWS will retry for us if we fail. So let's do that on an S3 error.
+    if artifact.had_s3_error:
+        raise IOError("S3 error, try again")
     return response

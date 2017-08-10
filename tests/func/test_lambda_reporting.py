@@ -11,8 +11,12 @@ from fx_sig_verify.validate_moz_signature import (lambda_handler, )  # noqa: E40
 bucket_name = 'pseudo-bucket'
 key_name = '32bit.exe'
 sqs_name = "test-queue"
+
+
 class DummyContext(object):
     aws_request_id = 'DUMMY ID'
+
+
 dummy_context = DummyContext()
 
 
@@ -94,7 +98,7 @@ def upload_file(bucket, filename):
     data_dir = os.path.join(os.path.dirname(__file__), '..', 'data')
     fname = os.path.join(data_dir, filename)
     bucket.put_object(Body=open(fname, 'r'), Key=key_name)
-    return [(bucket_name, key_name), ]
+    return (bucket_name, key_name)
 
 
 def setup_aws_mocks():
@@ -139,8 +143,8 @@ def test_always_log_output_issue_17(bad_files, good_files, set_verbose_true,
         setter()
         # WHEN any file is processed
         for fname in good_files + bad_files:
-            upload_file(bucket, fname)
-            event = build_event(bucket.name, fname)
+            bucket_name, key_name = upload_file(bucket, fname)
+            event = build_event(bucket_name, key_name)
             results = lambda_handler(event, dummy_context)
             # THEN there should always be a message on stdout
             out, err = capsys.readouterr()
@@ -148,3 +152,22 @@ def test_always_log_output_issue_17(bad_files, good_files, set_verbose_true,
             print("response: '{}'".format(results))
             assert out != ''
             assert err == ''
+
+
+@mock_s3
+@mock_sns
+@mock_sqs
+def test_raise_exception_on_S3_error():
+    # GIVEN we're running in lambda
+    # mock the queue, but we won't examine it
+    setup_aws_mocks()
+    create_bucket()
+    # WHEN a non existant file is processed
+    # (S3 only guarantees eventual consistancy)
+    bucket_name, key_name = 'bogus_bucket', 'firefox-bogus.exe'
+    event = build_event(bucket_name, key_name)
+    # THEN we raise an error (so AWS will retry)
+    with pytest.raises(IOError):
+        results = lambda_handler(event, dummy_context)
+    # and function should not have returned
+    assert 'results' not in locals().keys()
