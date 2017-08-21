@@ -358,13 +358,7 @@ class MozSignedObjectViaLambda(MozSignedObject):
             self.had_s3_error = True
             self.add_error("failed to process s3 object {}/{} '{}'"
                            .format(self.bucket_name, self.key_name, text))
-            # issue #14 - the below decode majik is from AWS sample code.
-            new_key = urllib.unquote_plus(self.key_name.encode('utf8'))
-            self.add_message("First get failed ({}), trying to unquote"
-                             " ({})".format(self.key_name, new_key))
-            result = s3_client.get_object(Bucket=self.bucket_name,
-                                          Key=new_key)
-            self.add_message("get_object worked after unescaping")
+            raise
 
         debug("after s3_client.get_object() result={}".format(type(result)))
         if result['ContentLength'] > MAX_EXE_SIZE:
@@ -466,7 +460,9 @@ class SigVerifyBadSignature(SigVerifyException):
 def artifact_to_check_via_s3(lambda_event_record):
     bucket_name = lambda_event_record['s3']['bucket']['name']
     key_name = lambda_event_record['s3']['object']['key']
-    obj = MozSignedObjectViaLambda(bucket_name, key_name)
+    # issue #14 - the below decode majik is from AWS sample code.
+    real_key_name = urllib.unquote_plus(key_name.encode('utf8'))
+    obj = MozSignedObjectViaLambda(bucket_name, real_key_name)
     return obj
 
 
