@@ -1,6 +1,49 @@
 Changelog
 =========
 
+`0.3.3`__
+-----------------------------------------
+__ https://github.com/mozilla-services/fx-sig-verify/tree/v0.3.3
+
+
+
+-   Clean up S3/Lambda "key" handling
+
+    Old code performed an extra S3 call, but did allow confirmation that the
+    ``unquote_plus()`` solution worked. No need for extra calls any more.
+
+
+-   Improved reporting
+
+    -    Major changes:
+
+           -  Based on the 'REPORT' lines, compute and display metrics
+              about number of requests, and usage of memory and CPU
+              time.
+
+           -  added ability to extract all AWS & JSON records for a
+              request. This report is required to confirm that timed out
+              requests were actually retried. (Sometimes the success is
+              logged prior to the failure.)
+
+           -  Improved 'exclude' reporting.
+
+              Report now counts how many passes were for exe's that we exclude from validation.
+
+    -    Minor changes:
+
+           -  upgraded from optparse to argparse.
+           -  fixed math computations in some places.
+
+-   Activate S3 retry when we detect error. This is experimental, but
+    "should" work based on seeing the retries when the system times out.
+
+-   Improved Alerting. Duplicate key info into 'Subject' field of SNS
+    message. That gets used if the destination is email. Having a
+    default subject made examining the email logs very difficult -- this
+    provides more variety in subjects, and thus more (and smaller)
+    topics.
+
 `0.3.2`__
 -----------------------------------------
 __ https://github.com/mozilla-services/fx-sig-verify/tree/v0.3.2
