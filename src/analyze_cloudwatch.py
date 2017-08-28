@@ -12,8 +12,14 @@ import re
 # below should probably be a parameter to the app
 CONFIGURED_MAX_RUN_TIME_MS = 60 * 1000
 
+# Below globals are needed by factory or other globals
 JSON_STARTER = '{'
 REPORT_STARTER = 'REPORT'
+ANY_STARTER = ''
+
+# timestamp is optional (wasn't in original logs)
+# and may or may not have ANSI colorizing
+TIME_STAMP = r'''^(?:\x1b\[33m)?(?P<timestamp>[\d:.T-]{23}Z)(?:\x1b\[0m)? '''
 
 PERF_OUTPUT = """
 {invocations:19,d} runs
@@ -150,8 +156,9 @@ class MetricSummerizer(Summerizer):
     Accumulate Metrics from the 'REPORT' text line
     """
 
-    report_pattern = re.compile(r'''  # noqa
-                                ^REPORT\s+
+    report_pattern = re.compile(TIME_STAMP +
+                                r'''  # noqa
+                                \s*REPORT\s+
                                 RequestId:\s+(?P<request_id>\S+)\s+  # a2f5e4c9-76ed-11e7-90a2-d7d797025d0c
                                 Duration:\s+(?P<real_time>\S+)\s+ms\s+
                                 Billed\sDuration:\s+(?P<bill_time>\d+)\s+ms\s+
@@ -222,11 +229,12 @@ class MetricSummerizer(Summerizer):
 
     def compute_totals(self):
         c = self.counts
-        c["average_time"] = c["total_time"] / c["invocations"]
-        c["max_time_pcnt"] = c["max_time_invocations"] * 100 / c["invocations"]
+        invocations = c["invocations"] or float('INF')
+        c["average_time"] = c["total_time"] / invocations
+        c["max_time_pcnt"] = c["max_time_invocations"] * 100 / invocations
         c["max_memory_pcnt"] = (c["max_memory_invocations"] * 100
-                                / c["invocations"])
-        c["avg_memory"] = int(math.ceil(c["total_memory"] / c["invocations"]))
+                                / invocations)
+        c["avg_memory"] = int(math.ceil(c["total_memory"] / invocations))
         unprocessed = [k for k, v in self.retried_requests.iteritems() if v > 0]
         c["unprocessed"] = unprocessed
         c["retry_never_succeeded"] = len(unprocessed)
@@ -242,14 +250,25 @@ class ExtractSummarizer(Summerizer):
     Display all records for the specified request ids in the log file order.
     """
 
+    # adhoc pattern
+    TRACEBACK = 'Traceback'
+
+    # compile (once) the patterns we need
     req_id_pattern = re.compile(r'''  # noqa
-                                ^\S+\s+  # START, END, or REPORT
+                                ^(?P<line_type>\S+)\s+  # START, END, or REPORT
                                 RequestId:\s+(?P<request_id>\S+).*''',
                                 re.VERBOSE)
+    traceback_pattern = re.compile(TIME_STAMP + TRACEBACK)
 
-    def __init__(self, req_ids=None, **_):
-        self.req_ids = req_ids or []
+    def __init__(self, req_ids=None, verbose=False, **_):
         self.details = collections.defaultdict(list)
+        self.req_ids = req_ids or []
+        self.consistancy_check = not bool(self.req_ids)
+        self.verbose = verbose
+        self.import_errors_found = False
+        self.traceback_found_count = 0
+        self.first_report_line_type = None
+        self.last_report_line_type = None
 
     def parse(self, line):
         """
@@ -264,22 +283,71 @@ class ExtractSummarizer(Summerizer):
             match = self.req_id_pattern.search(datum)
             if match:
                 req_id = match.group('request_id')
+                if not self.first_report_line_type:
+                    self.first_report_line_type = match.group('line_type')
+                self.last_report_line_type = match.group('line_type')
             else:
-                # ignore some debug lines
+                # ignore some debug lines, but do ad hoc peeks for oddities
+                if "RuntimeWarning" in datum:
+                    self.import_errors_found = True
+                elif datum.startswith("Traceback"):
+                    self.traceback_found_count += 1
                 req_id = None
         return req_id, datum
 
     def add_line(self, line):
         req_id, datum = self.parse(line)
-        if req_id in self.req_ids:
-            self.details[req_id].append(datum)
+        if (self.consistancy_check or req_id in self.req_ids) \
+                and req_id is not None:
+            # we don't want to accidentally convert the json to a python dict
+            self.details[req_id].append(str(datum))
+
+    def print_consistency_errors(self):
+        # each request id should have a START, END, and REPORT line, plus one
+        # JSON line.
+        starters = ('S', 'E', 'R', '{', )
+        line_start_patterns = map(re.compile,
+                                  map(lambda x: self.TIME_STAMP+x, starters))
+        funky_count = 0
+        for rqst_id, lines in self.details.iteritems():
+            counts = [0, 0, 0, 0]
+            for i, pattern in enumerate(line_start_patterns):
+                counts[i] = reduce(lambda x, y: x+1 if y else x,
+                                   [l for l in lines if
+                                    pattern.match(l)], 0)
+            funky = len(lines) != 4 or counts != [1, 1, 1, 1]
+            if funky:
+                funky_count += 1
+                print("\nConsistency error:")
+                self.print_rqst(rqst_id)
+        if self.verbose:
+            print("Checked {} requests for consistency, found {} "
+                  "inconsistencies.".
+                  format(len(self.details), funky_count))
+
+    def print_rqst(self, rqst_id):
+        indent = '\n   '
+        print("{} had {} log lines.".format(rqst_id,
+                                            len(self.details[rqst_id])))
+        print(indent[2:], indent.join([str(x)[:80] for x in
+                                       self.details[rqst_id]]))
 
     def print_final_report(self):
-        indent = '\n   '
+        if self.first_report_line_type != "START" or \
+           self.last_report_line_type != "REPORT":
+            print("Warning: log file may not be consistent")
+            print(" started with {}, ended with {}".
+                  format(self.first_report_line_type,
+                         self.last_report_line_type))
+        if self.traceback_found_count:
+            print("Warning: {} tracebacks found".
+                  format(self.traceback_found_count))
+        if self.import_errors_found:
+            print("NOTE: python import errors reported.")
+        # always do the consistency check
+        self.print_consistency_errors()
         for r in self.req_ids:
-            print("{} had {} log lines.".format(r, len(self.details[r])))
-            print(indent[2:], indent.join([str(x)[:80] for x in
-                                           self.details[r]]))
+            self.print_rqst(r)
 
 
 def summerizer_factory(starter, **kwargs):
@@ -287,27 +355,30 @@ def summerizer_factory(starter, **kwargs):
         return JsonSummerizer(**kwargs)
     elif starter is REPORT_STARTER:
         return MetricSummerizer(**kwargs)
-    elif starter is "":
+    elif starter is ANY_STARTER:
         return ExtractSummarizer(**kwargs)
     else:
         raise ValueError("No summary for '{}' yet".format(starter))
 
 
-def filter_for_line_type(starter, lines):
+def filter_for_line_type(pattern, lines):
     for l in lines:
-        if l.startswith(starter):
+        if pattern.match(l):
             yield l
 
 
 def parse_args(argv=None):
     parser = argparse.ArgumentParser()
-    input_group = parser.add_mutually_exclusive_group(required=True)
+    input_group = parser.add_mutually_exclusive_group()
     input_group.add_argument("--json", "-j", dest="starter",
                              action="store_const", const=JSON_STARTER,
                              help='return json lines')
     input_group.add_argument("--report", "-r", dest="starter",
                              action="store_const", const=REPORT_STARTER,
                              help='return billing lines')
+    input_group.add_argument("--consistency-check", dest="starter",
+                             action="store_const", const=ANY_STARTER,
+                             help='find inconsistent request output')
     extract_group = parser.add_mutually_exclusive_group()
     extract_group.add_argument("--extract", help="extract request id's",
                                dest="req_ids", nargs="+")
@@ -317,10 +388,12 @@ def parse_args(argv=None):
                         help="add details")
     parser.add_argument("file", help="cloud watch input")
     args = parser.parse_args(argv)
+
+    # Do some munging of args
+    if args.starter == ANY_STARTER:
+        args.summarize = True
     if args.req_ids:
-        if args.starter != JSON_STARTER:
-            parser.error("--extract only valid with --json")
-        args.starter = ''  # process all lines
+        args.starter = ANY_STARTER  # process all lines
     return args
 
 
@@ -328,7 +401,8 @@ def main(argv=None):
     logging.basicConfig(level=logging.INFO, format='%(message)s')
     args = parse_args(argv)
     summary = summerizer_factory(**args.__dict__)
-    for l in filter_for_line_type(args.starter, fileinput.input(args.file)):
+    starter_pattern = re.compile(TIME_STAMP + args.starter)
+    for l in filter_for_line_type(starter_pattern, fileinput.input(args.file)):
         summary.add_line(l)
     if args.summarize or args.req_ids:
         summary.print_final_report()
