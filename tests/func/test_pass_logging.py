@@ -2,6 +2,7 @@
 
 import boto3
 import os
+import json
 from moto import mock_s3, mock_sns, mock_sqs
 import pytest
 
@@ -149,7 +150,12 @@ def test_pass_no_message_when_no_verbose(set_verbose_false, good_files):
             event = build_event(bucket_name, key_name)
             response = lambda_handler(event, dummy_context)
             # THEN there should be no message
-            count, msg = get_one_message(queue)
+            count, msg_json = get_one_message(queue)
+            try:
+                msg_dict = json.loads(msg_json)
+                msg = msg_dict['Message']
+            except ValueError:
+                msg = ""
 
             # print things that will be useful to debug
             print("response:", response)
@@ -177,7 +183,9 @@ def test_pass_message_when_verbose(set_verbose_true, good_files):
             response = lambda_handler(event, dummy_context)
             print("response:", response)
             # THEN there should be no message
-            count, msg = get_one_message(queue)
+            count, msg_json = get_one_message(queue)
+            msg_dict = json.loads(msg_json)
+            msg = msg_dict['Message']
             print("message:", msg)
             assert "pass" in response['results'][0]['status']
             assert count is 1 and msg.startswith('pass for')

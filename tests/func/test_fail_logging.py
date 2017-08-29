@@ -2,6 +2,7 @@
 
 import boto3
 import os
+import json
 from moto import mock_s3, mock_sns, mock_sqs
 import pytest
 
@@ -145,7 +146,9 @@ def test_fail_message_when_not_verbose(set_verbose_false, bad_files):
             event = build_event(bucket.name, fname)
             response = lambda_handler(event, dummy_context)
             # THEN there should be a message
-            count, msg = get_one_message(queue)
+            count, msg_json = get_one_message(queue)
+            msg_dict = json.loads(msg_json)
+            msg = msg_dict['Message']
 
             # print things that will be useful to debug
             print("response:", response)
@@ -173,7 +176,9 @@ def test_fail_message_when_verbose(set_verbose_true, bad_files):
             response = lambda_handler(event, dummy_context)
             print("response:", response)
             # THEN there should be a message
-            count, msg = get_one_message(queue)
+            count, msg_json = get_one_message(queue)
+            msg_dict = json.loads(msg_json)
+            msg = msg_dict['Message']
             print("message:", msg)
             assert "fail" in response['results'][0]['status']
             assert count is 1 and msg.startswith('fail for')
