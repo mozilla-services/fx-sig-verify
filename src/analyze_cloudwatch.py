@@ -72,17 +72,24 @@ class JsonSummerizer(Summerizer):
     """
     extract JSON data
     """
+
+    json_pattern = re.compile(TIME_STAMP +
+                              r'''\s*(?P<json>.*\S)\s*$''')
+
     def __init__(self, summarize=False, verbose=False, req_ids=None, **_):
         self.data = []
         self.summarize = summarize
         self.verbose = verbose
 
     def add_line(self, line):
+        # always remove timestamp (if present)
+        match = self.json_pattern.match(line)
+        json_text = match.group('json')
         if self.summarize:
-            datum = json.loads(line.strip())
+            datum = json.loads(json_text)
             self.data.append(datum)
         else:
-            print(line, end='')
+            print(json_text, end='')
 
     def print_final_report(self):
         if self.summarize:
