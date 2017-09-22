@@ -1,0 +1,59 @@
+#!/bin/bash
+USAGE="usage: ${0##*/}
+Retrieve CloudWatch logs for fx-sig-verify-prod. AWS credentials must
+already be available in environment.
+
+Environment:
+    START_TIME  date expression for start (defaults to name in last
+                file)
+    END_TIME    date expression for end
+
+Options:
+    -h|--help   this message
+"
+
+warn() { for m; do echo "$m"; done 1>&2 ; }
+die() { warn "$@"; exit 2; }
+usage() { warn "$@" "${USAGE:-}" ; test $# -eq 0; exit $?; }
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -h|--help) usage ;;
+        -*) usage "unknown option '$1'" ;;
+        *) break ;;
+    esac
+done
+
+START_TIME=${START_TIME:-}
+if [[ -z $START_TIME ]]; then
+    # get newest existing log file names, using default format
+    # (this allows custom queries to not interfere)
+    last_file=$(ls logs-20??-*.txt 2>/dev/null | tail -1)
+    if [[ -z $last_file ]]; then
+        usage "Need a valid start time"
+    fi
+    echo "Getting start time from $last_file"
+    # extract UTC date to use as start time
+    START_TIME=${last_file##*logs-}
+    START_TIME=${START_TIME%%.txt}
+fi
+echo "Using start time of $START_TIME"
+
+# build filename for now
+DATE=$(which gdate || which date)
+now="$($DATE --utc --iso-8601=minutes)"
+END_TIME="${END_TIME:-$now}"
+new_logs="logs-${END_TIME}.txt"
+
+awslogs get \
+    --aws-region us-east-1 \
+    --start "$START_TIME" \
+    --end "$END_TIME" \
+    --no-group --no-stream \
+    --group /aws/lambda/fx-sig-verify-prod \
+    --timestamp --no-color \
+    "$@" \
+    >> "$new_logs" \
+    || die "Error $? fetching logs"
+
+echo "New logs in $new_logs"
