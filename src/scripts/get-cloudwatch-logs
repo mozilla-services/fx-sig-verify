@@ -7,10 +7,13 @@ Environment:
     START_TIME  date expression for start (defaults to name in last
                 file)
     END_TIME    date expression for end
+    LAMBDA      specify function name (default fx-sig-verify-prod)
 
 Options:
     -h|--help   this message
 "
+
+LAMBDA=${LAMBDA:-fx-sig-verify-prod}
 
 warn() { for m; do echo "$m"; done 1>&2 ; }
 die() { warn "$@"; exit 2; }
@@ -50,7 +53,7 @@ awslogs get \
     --start "$START_TIME" \
     --end "$END_TIME" \
     --no-group --no-stream \
-    --group /aws/lambda/fx-sig-verify-prod \
+    --group /aws/lambda/"$LAMBDA" \
     --timestamp --no-color \
     "$@" \
     >> "$new_logs" \

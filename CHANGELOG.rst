@@ -1,5 +1,24 @@
 Changelog
 =========
+`0.3.4`__ (`in progress`__)
+-----------------------------------------
+__ https://github.com/mozilla-services/fx-sig-verify/tree/v0.3.4
+__ https://github.com/mozilla-services/fx-sig-verify/commits/master
+
+-   Added 'dev' versioning
+
+    It was too confusing about which version was in stage or dev, and
+    how  that differed from prod. Also moved config to setup.cfg (one
+    less weird dot-file
+
+-   Added ``get-cloudwatch-logs`` -- bash script to download Cloud Watch
+    logs for a lambda function for a specified time range. (Defaults to
+    production and all since last log. Can be overridden ``--help`` is
+    your friend.)
+
+-   Added ``re-invoke-dirtree`` -- bash script to search for ``.exe``
+    files on s3 and invoke the lambda on them. Intednded for backfilling
+    when the lambda doesn't work
 
 `0.3.3`__
 -----------------------------------------

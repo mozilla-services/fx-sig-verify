@@ -24,7 +24,7 @@ def read(*names, **kwargs):
 
 setup(
     name='fx_sig_verify',
-    version='0.3.3',
+    version='0.3.3-76',
     license='MPL',
     description='AWS Lambda to check code signatures.',
     long_description='%s\n%s' % (
@@ -64,7 +64,7 @@ setup(
     keywords=[
         # eg: 'keyword1', 'keyword2', 'keyword3',
     ],
-    setup_requires=[  # "lambda-setuptools",
+    setup_requires=[
                     ],
 
     install_requires=[
@@ -89,7 +89,10 @@ setup(
             'analyze_cloudwatch = analyze_cloudwatch:main [cli]',
         ],
     },
+    scripts=[
+        "src/scripts/get-cloudwatch-logs",
+        "src/scripts/re-invoke-dirtree",
+    ],
     dependency_links=[
         ],
-    lambda_module="verify_sigs",
 )

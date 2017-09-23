@@ -15,6 +15,6 @@ build
 venv
 mnt
 .git*
-logs
+logs*
 htmlcov
 notes_*
