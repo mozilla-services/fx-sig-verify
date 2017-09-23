@@ -8,12 +8,14 @@ Environment:
                 file)
     END_TIME    date expression for end
     LAMBDA      specify function name (default fx-sig-verify-prod)
+    AWS_REGION  specify region (default us-east-1)
 
 Options:
     -h|--help   this message
 "
 
 LAMBDA=${LAMBDA:-fx-sig-verify-prod}
+AWS_REGION=${AWS_REGION:-us-east-1}
 
 warn() { for m; do echo "$m"; done 1>&2 ; }
 die() { warn "$@"; exit 2; }
@@ -49,7 +51,7 @@ END_TIME="${END_TIME:-$now}"
 new_logs="logs-${END_TIME}.txt"
 
 awslogs get \
-    --aws-region us-east-1 \
+    --aws-region "$AWS_REGION" \
     --start "$START_TIME" \
     --end "$END_TIME" \
     --no-group --no-stream \

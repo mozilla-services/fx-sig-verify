@@ -8,12 +8,13 @@ fxsv.zip: Dockerfile.build-environment.built
 
 .PHONY: upload
 upload: fxsv.zip
+	@echo "Using AWS credentials for $$AWS_DEFAULT_PROFILE in $$AWS_REGION"
 	aws lambda update-function-code \
 	    --function-name hwine_ffsv_dev \
 	    --zip-file fileb://$(PWD)/fxsv.zip \
-	    --publish
 
 publish: upload
+	@echo "Using AWS credentials for $$AWS_DEFAULT_PROFILE in $$AWS_REGION"
 	aws lambda publish-version \
 	    --function-name hwine_ffsv_dev \
 	    --code-sha-256 "$$(openssl sha1 -binary -sha256 fxsv.zip | base64 | tee /dev/tty)" \
@@ -22,6 +23,7 @@ publish: upload
 .PHONY: invoke
 invoke:
 	@rm -f invoke_output.json
+	@echo "Using AWS credentials for $$AWS_DEFAULT_PROFILE in $$AWS_REGION"
 	aws lambda invoke \
 		--function-name hwine_ffsv_dev \
 		--payload "$$(cat tests/data/S3_event_template.json)" \

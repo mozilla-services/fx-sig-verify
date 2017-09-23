@@ -5,6 +5,8 @@ Changelog
 __ https://github.com/mozilla-services/fx-sig-verify/tree/v0.3.4
 __ https://github.com/mozilla-services/fx-sig-verify/commits/master
 
+-   Makefile reports AWS credentials being used
+
 -   Added 'dev' versioning
 
     It was too confusing about which version was in stage or dev, and
