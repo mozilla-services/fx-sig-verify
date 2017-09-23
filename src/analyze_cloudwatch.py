@@ -51,6 +51,20 @@ JSON_OUTPUT = """
 {total:6,d} processed
 ======
 """.strip()
+#need the keys, as when rendered, no default values
+JSON_OUTPUT_KEYS = (
+    "pass",
+    "Excluded",
+    "SigVerifyNoSignature",
+    "SigVerifyBadSignature",
+    "SigVerifyNonMozSignature",
+    "S3RetrievalFailure",
+    "S3UnquoteRetry",
+    "S3UnquoteSuccess",
+    "other",
+    "fail",
+    "total",
+)
 
 logger = logging.getLogger(__name__)
 
@@ -94,6 +108,9 @@ class JsonSummerizer(Summerizer):
     def print_final_report(self):
         if self.summarize:
             self.compute_totals()
+            # HACK - since we exand counts, se need default values
+            for k in JSON_OUTPUT_KEYS:
+                self.counts[k] += 0
             print(JSON_OUTPUT.format(**self.counts))
         else:
             for r in self.req_ids:
@@ -102,6 +119,7 @@ class JsonSummerizer(Summerizer):
                                               in self.details[r]])))
 
     def compute_totals(self):
+        # ensure all keys will have some value
         def incr(d, truthy, true_key, false_key=None):
             # ensure any keys exist, so format() can grab them
             d[true_key] += 0
@@ -153,7 +171,7 @@ class JsonSummerizer(Summerizer):
                     pass
         # compute uncategorized failures
         known_fails = reduce(lambda x, y: x+y, [v for k, v in counts.iteritems()
-                                                if k.endswith("Signature")])
+                                                if k.endswith("Signature")], 0)
         counts['other'] = counts['fail'] - known_fails
         self.counts = counts
 
