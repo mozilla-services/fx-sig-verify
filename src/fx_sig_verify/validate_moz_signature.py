@@ -414,8 +414,18 @@ class MozSignedObjectViaLambda(MozSignedObject):
             # set flag so we don't re-raise
             topic_arn = "no-topic-arn"
             raise KeyError("Missing 'SNSARN' from environment")
-        response = client.publish(Message=msg, Subject=subject,
-                                  TopicArn=topic_arn)
+        try:
+            # if the publish fails, we still want to continue, so we get the
+            # details into the cloud watch logs. Otherwise, this can
+            # (sometimes) terminate the lambda causing retries & DLQ
+            response = client.publish(Message=msg, Subject=subject,
+                                    TopicArn=topic_arn)
+        except Exception as e:
+            pself.add_message("sns publish failed\n"
+                "   msg ({}): '{}'"\n"
+                "  subj ({}): '{}'\n"
+                "exception: '{}'"
+                "".format(len(msg), str(msg), len(subject), str(subject), str(e)))
         debug("sns publish: '{}'".format(response))
 
 
