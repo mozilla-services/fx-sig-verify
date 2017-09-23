@@ -422,7 +422,7 @@ class MozSignedObjectViaLambda(MozSignedObject):
                                     TopicArn=topic_arn)
         except Exception as e:
             pself.add_message("sns publish failed\n"
-                "   msg ({}): '{}'"\n"
+                "   msg ({}): '{}'\n"
                 "  subj ({}): '{}'\n"
                 "exception: '{}'"
                 "".format(len(msg), str(msg), len(subject), str(subject), str(e)))
