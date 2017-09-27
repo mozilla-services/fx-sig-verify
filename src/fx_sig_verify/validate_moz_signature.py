@@ -421,7 +421,7 @@ class MozSignedObjectViaLambda(MozSignedObject):
             response = client.publish(Message=msg, Subject=subject,
                                     TopicArn=topic_arn)
         except Exception as e:
-            pself.add_message("sns publish failed\n"
+            self.add_message("sns publish failed\n"
                 "   msg ({}): '{}'\n"
                 "  subj ({}): '{}'\n"
                 "exception: '{}'"
