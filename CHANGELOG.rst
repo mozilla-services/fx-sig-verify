@@ -1,9 +1,18 @@
 Changelog
 =========
-`0.3.4`__ (`in progress`__)
+`0.3.5`__ (`in progress`__)
+-----------------------------------------
+__ https://github.com/mozilla-services/fx-sig-verify/tree/v0.3.5
+__ https://github.com/mozilla-services/fx-sig-verify/commits/master
+
+
+`0.3.4`__
 -----------------------------------------
 __ https://github.com/mozilla-services/fx-sig-verify/tree/v0.3.4
-__ https://github.com/mozilla-services/fx-sig-verify/commits/master
+
+-   Catch SNS Publish errors so they do not teminate lambda. They are
+    now logged to CloudWatch and the function continues. (Should get
+    enough information to fix the errors now.)
 
 -   Makefile reports AWS credentials being used
 
