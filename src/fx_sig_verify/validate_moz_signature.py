@@ -420,13 +420,13 @@ class MozSignedObjectViaLambda(MozSignedObject):
             # (sometimes) terminate the lambda causing retries & DLQ
             response = client.publish(Message=msg, Subject=subject,
                                     TopicArn=topic_arn)
+            debug("sns publish: '{}'".format(response))
         except Exception as e:
             self.add_message("sns publish failed\n"
                 "   msg ({}): '{}'\n"
                 "  subj ({}): '{}'\n"
                 "exception: '{}'"
                 "".format(len(msg), str(msg), len(subject), str(subject), str(e)))
-        debug("sns publish: '{}'".format(response))
 
 
 class SigVerifyException(Exception):
