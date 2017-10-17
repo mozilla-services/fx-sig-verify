@@ -21,6 +21,21 @@ VALID_CERTS = [
     13159122772063869363917814975931229904L,  # just one cert for all channels
 ]
 
+# We only want certain extensions handled in production. Originally that was
+# handled by the S3 invoking function, but now other consumers want more
+# extensions, so we filter here. See
+# https://github.com/mozilla-services/fx-sig-verify/issues/29
+PRODUCTION_EXTENSIONS = (
+    '.exe',
+)
+
+# The installers are consistently named. Anything else (as of this writing) is
+# some internal tooling that is not distributed to end users.
+PRODUCTION_PREFIXES = (
+    "Firefox",      # used for Beta & GA releases
+    "firefox",      # used for nightly & dep builds
+)
+
 # We will reject any file larger than this to avoid DoS.
 MAX_EXE_SIZE = 100 * (1024 * 1024)  # 100MiB
 
@@ -165,6 +180,10 @@ class MozSignedObject(object):
             # We're in test mode, process everything
             return True
 
+        # We have 2 criteria for filtering - file extension and file prefix. In
+        # both cases, we consider a pass for filtering a 'pass', with the
+        # explanation of why.
+
         # Current criteria is based on prefix of filename. We include the two
         # know good names, rather than exclude the two currently known
         # exceptions (mar.exe & mbsdiff.exe) to reduce false positives (since a
@@ -177,14 +196,14 @@ class MozSignedObject(object):
                     break
             return result
 
-        allowed_prefixes = [
-            "Firefox",      # used for Beta & GA releases
-            "firefox",      # used for nightly & dep builds
-        ]
         basename = os.path.basename(self.artifact_name)
-        do_validation = startswithoneof(basename, allowed_prefixes)
-        if not do_validation:
+        do_validation = True
+        if not basename.endswith(PRODUCTION_EXTENSIONS):
+            self.add_message("Excluded from validation by suffix")
+            do_validation = False
+        elif not basename.startswith(PRODUCTION_PREFIXES):
             self.add_message("Excluded from validation by prefix")
+            do_validation = False
         return do_validation
 
     @trace_xray_subsegment()
@@ -419,14 +438,15 @@ class MozSignedObjectViaLambda(MozSignedObject):
             # details into the cloud watch logs. Otherwise, this can
             # (sometimes) terminate the lambda causing retries & DLQ
             response = client.publish(Message=msg, Subject=subject,
-                                    TopicArn=topic_arn)
+                                      TopicArn=topic_arn)
             debug("sns publish: '{}'".format(response))
         except Exception as e:
             self.add_message("sns publish failed\n"
-                "   msg ({}): '{}'\n"
-                "  subj ({}): '{}'\n"
-                "exception: '{}'"
-                "".format(len(msg), str(msg), len(subject), str(subject), str(e)))
+                             "   msg ({}): '{}'\n"
+                             "  subj ({}): '{}'\n"
+                             "exception: '{}'"
+                             "".format(len(msg), str(msg), len(subject),
+                                       str(subject), str(e)))
 
 
 class SigVerifyException(Exception):

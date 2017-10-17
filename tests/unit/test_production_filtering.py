@@ -1,4 +1,19 @@
-# In production, we filter out "don't care" exe's
+# In production, we filter out "don't care" exe's and non-exe's
+# The decisions are made on the last elemement of the key name, and the desired
+# truth table is as follows:
+#
+#   +-------------+-------+----------+
+#   | Production? | Good? | Exclude? |
+#   +-------------+-------+----------+
+#   |     Y       |   Y   |    N     |
+#   +-------------+-------+----------+
+#   |     Y       |   n   |    Y     |
+#   +-------------+-------+----------+
+#   |     n       |   Y   |    N     |
+#   +-------------+-------+----------+
+#   |     n       |   n   |    N     |
+#   +-------------+-------+----------+
+
 
 import boto3
 import os
@@ -39,6 +54,17 @@ def is_in(text, array, array2=None):
     return not not_in(text, array, array2)
 
 
+@pytest.fixture(scope='session', autouse=True)
+def set_valid_region():
+    # moto requires valid region, even though not sending anything
+    os.environ['AWS_DEFAULT_REGION'] = "us-east-1"
+    # make sure a profile doesn't mess us up
+    try:
+        del os.environ['AWS_DEFAULT_PROFILE']
+    except KeyError:
+        pass
+
+
 @pytest.fixture(scope='module', autouse=True)
 def disable_production_filtering():
     # we want to process "invalid" files during testing
@@ -58,6 +84,16 @@ def build_event(bucket, key):
                      },
               }
     return {'Records': [record, ]}
+
+
+@pytest.fixture()
+def bad_keys():
+    payload = [
+        'bad_1.exe',
+        'bad_1.mar',
+        "Firefox",
+    ]
+    return payload
 
 
 @pytest.fixture()
@@ -191,24 +227,24 @@ def test_no_exclude_message_when_not_production(set_production_false,
 @mock_s3
 @mock_sns
 @mock_sqs
-def test_exclude_message_when_production(set_production_true, good_files,
-                                         bad_files):
+def test_exclude_message_when_production(set_production_true, bad_files,
+                                         bad_keys):
     setup_aws_mocks()
     bucket = create_bucket()
     # Given that PRODUCTION is missing or true
     for truthy in set_production_true:
         truthy()
-        # WHEN a any file is processed (since we have no "good files" that pass
-        # the filter)
-        for fname in good_files + bad_files:
-            upload_file(bucket, fname)
-            event = build_event(bucket.name, fname)
-            response = lambda_handler(event, dummy_context)
-            print("response:", response)
-            # THEN it should pass & be marked as excluded
-            assert "pass" in response['results'][0]['status']
-            assert is_in("Excluded from validation",
-                         response['results'][0]['results'])
+        # WHEN a bad file is processed:
+        for fname in bad_files:
+            for key in bad_keys:
+                upload_file(bucket, fname, key)
+                event = build_event(bucket.name, key)
+                response = lambda_handler(event, dummy_context)
+                print("response:", response)
+                # THEN it should pass & be marked as excluded
+                assert "pass" in response['results'][0]['status']
+                assert is_in("Excluded from validation", response['results'],
+                             'results')
 
 
 @mock_s3
