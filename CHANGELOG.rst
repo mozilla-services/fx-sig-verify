@@ -1,10 +1,13 @@
 Changelog
 =========
-`0.3.5`__ (`in progress`__)
+`0.4.0`__ (`in progress`__)
 -----------------------------------------
-__ https://github.com/mozilla-services/fx-sig-verify/tree/v0.3.5
+__ https://github.com/mozilla-services/fx-sig-verify/tree/v0.4.0
 __ https://github.com/mozilla-services/fx-sig-verify/commits/master
 
+-   Responsibility for excluding non '\*.exe' files moved into lambda
+    function to support additional lambda functions needing event
+    stream.
 
 `0.3.4`__
 -----------------------------------------
