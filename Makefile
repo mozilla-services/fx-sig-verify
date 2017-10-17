@@ -2,17 +2,18 @@
 DEV_IMAGE_NAME=fxsv/dev
 BUILD_IMAGE_NAME=fxsv/build
 INSTANCE_NAME=fxsv_latest
+VENV_NAME=venv
 
 # custom build
 fxsv.zip: Dockerfile.build-environment.built
 
-.PHONY: upload
 upload: fxsv.zip
 	@echo "Using AWS credentials for $$AWS_DEFAULT_PROFILE in $$AWS_REGION"
 	aws lambda update-function-code \
 	    --function-name hwine_ffsv_dev \
 	    --zip-file fileb://$(PWD)/fxsv.zip \
 
+.PHONY: upload
 publish: upload
 	@echo "Using AWS credentials for $$AWS_DEFAULT_PROFILE in $$AWS_REGION"
 	aws lambda publish-version \
@@ -64,5 +65,11 @@ Dockerfile.build-environment.built: Dockerfile.build-environment
 	touch fxsv.zip
 	docker ps -qa --filter name=$(INSTANCE_NAME) >$@
 	test -s $@ || rm $@
+
+$(VENV_NAME):
+	virtualenv --python=python2.7 $@
+	source $(VENV_NAME)/bin/activate && echo req*.txt | xargs -n1 pip install -r
+	@echo "Virtualenv created in $(VENV_NAME). You must activate before continuing."
+	false
 
 # vim: noet ts=8
