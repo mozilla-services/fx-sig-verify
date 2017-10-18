@@ -1,13 +1,19 @@
 Changelog
 =========
-`0.4.0`__ (`in progress`__)
+`0.4.0`__
 -----------------------------------------
 __ https://github.com/mozilla-services/fx-sig-verify/tree/v0.4.0
-__ https://github.com/mozilla-services/fx-sig-verify/commits/master
+
+-   Support for receiving messages directly from S3 or forwarded from
+    SNS. `Issue #28`__.
+
+__ https://github.com/mozilla-services/fx-sig-verify/issues/28
 
 -   Responsibility for excluding non '\*.exe' files moved into lambda
     function to support additional lambda functions needing event
-    stream.
+    stream. `Issue #29`__.
+
+__ https://github.com/mozilla-services/fx-sig-verify/issues/29
 
 `0.3.4`__
 -----------------------------------------
