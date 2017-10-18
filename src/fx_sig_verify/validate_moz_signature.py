@@ -487,6 +487,32 @@ class SigVerifyBadSignature(SigVerifyException):
     pass
 
 
+def unpacked_s3_events(events, notices=None):
+    '''
+    Break apart the events structure and yield each S3 record
+
+    :param events: dict with key 'Records' & value a list of sub-events
+    :param notices: dict in which to place a note if SNS detected
+    :returns s3_event_record: sequence of s3 event records
+    '''
+    try:
+        for event in events['Records']:
+            if 's3' in event:
+                yield event
+            elif 'Sns'in event:
+                # embedded events encoded as json string
+                if notices:
+                    notices['unpacker'] = "SNS message unpacked"
+                for inner in unpacked_s3_events(json.loads(
+                                                event['Sns']['Message'])):
+                    yield inner
+            else:
+                raise KeyError("unknown event type '{}'"
+                               .format(json.dumps(event)))
+    except Exception:
+        raise ValueError("Invalid AWS Event '{}'".format(json.dumps(events)))
+
+
 def artifact_to_check_via_s3(lambda_event_record):
     bucket_name = lambda_event_record['s3']['bucket']['name']
     key_name = lambda_event_record['s3']['object']['key']
@@ -507,7 +533,9 @@ def lambda_handler(event, context):
     :param event: a JSON formatted string as described in the AWS Documentation
     :param context: an AWS data structure we do not use.
 
-    :returns None: the S3 event API does not expect any result.
+    :returns result: a JSON formatted representation of the action taken. While
+                     the AWS lambda interface does not require a return,
+                     providing one makes testing and other use cases simpler
     """
     MozSignedObject.set_verbose()
     response = {'version': fx_sig_verify.__version__,
@@ -515,7 +543,7 @@ def lambda_handler(event, context):
                 'request_id': context.aws_request_id,
                 }
     results = []
-    for record in event['Records']:
+    for record in unpacked_s3_events(event, response):
         artifact = artifact_to_check_via_s3(record)
         try:
             valid_sig = False

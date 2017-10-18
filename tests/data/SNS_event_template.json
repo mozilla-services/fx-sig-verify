@@ -1,0 +1,22 @@
+{
+   "Records" : [
+      {
+         "Sns" : {
+            "MessageAttributes" : {},
+            "UnsubscribeUrl" : "https://sns.us-east-1.amazonaws.com/?",
+            "Signature" : "Dw6ZXWI6wR2HfrADV/V4ODKS+I70nCSpc8T3YO72NU",
+            "Message" : "{\"Records\":[{\"eventVersion\":\"2.0\",\"eventSource\":\"aws:s3\",\"awsRegion\":\"us-east-1\",\"eventTime\":\"2017-10-16T19:27:22.254Z\",\"eventName\":\"ObjectCreated:Put\",\"userIdentity\":{\"principalId\":\"AWS:AIDAIULXF63K2H2FTTMD6\"},\"requestParameters\":{\"sourceIPAddress\":\"54.214.230.165\"},\"responseElements\":{\"x-amz-request-id\":\"1D2FDA789DA2E260\",\"x-amz-id-2\":\"U1NUbqo5UTwf+Pkj+BTwc3Xuvw/mHpmVYhIWvgikM1jyYvOju8DB+nxwpiduu9yPFXVQxXuIE4o=\"},\"s3\":{\"s3SchemaVersion\":\"1.0\",\"configurationId\":\"Firefox Asset Upload\",\"bucket\":{\"name\":\"hwine-ffsv-dev\",\"ownerIdentity\":{\"principalId\":\"A53F4QSBA8O73\"},\"arn\":\"arn:aws:s3:::net-mozaws-stage-delivery-firefox\"},\"object\":{\"key\":\"nightly/test/Firefox bogus thingy.exe\",\"size\":319,\"eTag\":\"704c98757a8201d30cd3aef75f811ee7\",\"versionId\":\"KXoPKO9f6A8pCs0_OHB.9aff.uVYU_Y0\",\"sequencer\":\"0059E5081A2100FEEC\"}}}]}",
+            "Subject" : "Amazon S3 Notification",
+            "Type" : "Notification",
+            "SigningCertUrl" : "https://sns.us-east-1.amazonaws.com/SimpleNotificationService-433026a4050d206028891664da859041.pem",
+            "Timestamp" : "2017-10-16T19:27:22.316Z",
+            "TopicArn" : "arn:aws:sns:us-east-1",
+            "SignatureVersion" : "1",
+            "MessageId" : "349f1147-d0b6-5367-a9a1-4318daec8389"
+         },
+         "EventVersion" : "1.0",
+         "EventSubscriptionArn" : "arn:aws:sns:us-east-1...",
+         "EventSource" : "aws:sns"
+      }
+   ]
+}
