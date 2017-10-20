@@ -1,5 +1,13 @@
 Changelog
 =========
+`0.4.1`__
+-----------------------------------------
+__ https://github.com/mozilla-services/fx-sig-verify/tree/v0.4.1
+
+- Fix too long SNS Subject lines, `Issue #26`__
+
+__ https://github.com/mozilla-services/fx-sig-verify/issues/26
+
 `0.4.0`__
 -----------------------------------------
 __ https://github.com/mozilla-services/fx-sig-verify/tree/v0.4.0
