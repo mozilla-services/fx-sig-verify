@@ -413,8 +413,20 @@ class MozSignedObjectViaLambda(MozSignedObject):
 
     @trace_xray_subsegment()
     def send_sns(self, msg, e=None, reraise=False):
-        # use first line of incoming msg as subject
+        # use first line of incoming msg as subject, but AWS limit is under 100
+        # chars.
+        # ASSUME anything over is due to long s3 URL and use heuristic
         subject = msg.split('\n')[0]
+        if len(subject) >= 100:
+            # split assuming URL, then retain result (index 0) and file name
+            # (index -1). File name should be sufficient to allow page recipient
+            # to decide urgency of further investigation.
+            pieces = subject.split('/')
+            subject = "{} ... {}".format(pieces[0], pieces[-1])
+            if len(subject) >= 100:
+                # don't try to be smarter, full text is still in 'msg'
+                subject = "Truncated subject, examine message"
+
         # append bucket & key, short key first
         msg += "\n{}\nkey={}\nbucket={}".format(os.path.basename(self.key_name),
                                                 self.key_name, self.bucket_name)

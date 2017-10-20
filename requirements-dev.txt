@@ -9,4 +9,4 @@ python-dateutil
 pytest
 s3transfer
 six
-moto
+git+https://github.com/hwine/moto.git@pass-subject-through
