@@ -4,6 +4,8 @@ Changelog
 -----------------------------------------
 __ https://github.com/mozilla-services/fx-sig-verify/tree/v0.4.1
 
+- Change report to show max memory used, rather than average.
+
 - Fix too long SNS Subject lines, `Issue #26`__
 
 __ https://github.com/mozilla-services/fx-sig-verify/issues/26

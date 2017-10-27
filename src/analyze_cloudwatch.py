@@ -29,7 +29,7 @@ PERF_OUTPUT = """
 {average_time:19,.0f} average milliseconds per run
 {max_memory_invocations:19,d} times we used all memory
     {max_memory_pcnt:19.0f}% of runs maxing out memory
-    {avg_memory:19,d} MBi average memory used
+    {max_used_memory:19.0f} MBi max memory used
 {max_time_invocations:19,d} times run aborted for excessive time
     {max_time_pcnt:19.0f}% of runs exceeding time limit
     {retry_never_succeeded:19,d} times retry did not succeed
@@ -51,7 +51,7 @@ JSON_OUTPUT = """
 {total:6,d} processed
 ======
 """.strip()
-#need the keys, as when rendered, no default values
+#  need the keys, as when rendered, no default values
 JSON_OUTPUT_KEYS = (
     "pass",
     "Excluded",
@@ -200,6 +200,7 @@ class MetricSummerizer(Summerizer):
             "total_time": 0,
             "bill_time": 0,
             "average_time": 0,
+            "max_used_memory": 0,
             "max_memory_invocations": 0,
             "max_memory_pcnt": 0,
             "total_memory": 0,
@@ -219,6 +220,8 @@ class MetricSummerizer(Summerizer):
         self.counts["invocations"] += 1
         self.counts["total_time"] += float(match.group('real_time'))
         self.counts["bill_time"] += float(match.group('bill_time'))
+        self.counts["max_used_memory"] = max(float(match.group('mem_used')),
+                                             self.counts["max_used_memory"])
         self.counts["total_memory"] += float(match.group('mem_used'))
         self.counts["total_allocated_memory"] += \
             float(match.group('mem_allocated'))
