@@ -103,7 +103,7 @@ class JsonSummerizer(Summerizer):
             datum = json.loads(json_text)
             self.data.append(datum)
         else:
-            print(json_text, end='')
+            print(json_text)
 
     def print_final_report(self):
         if self.summarize:
