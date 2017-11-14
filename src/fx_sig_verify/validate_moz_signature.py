@@ -20,6 +20,7 @@ from verify_sigs import pecoff_blob
 VALID_CERTS = [
     16384756435581673599510349952793916302L,  # new cert bug 1366012
     13159122772063869363917814975931229904L,  # just one cert for all channels
+    17509195172714594371847083187584920039L,  # sha1 cert used for XP on esr
 ]
 
 # We only want certain extensions handled in production. Originally that was
