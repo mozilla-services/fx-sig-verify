@@ -9,6 +9,7 @@ import json
 import os
 import time
 import urllib
+import urllib2
 
 import fx_sig_verify
 from verify_sigs import auth_data
@@ -35,6 +36,13 @@ PRODUCTION_PREFIXES = (
     "Firefox",      # used for Beta & GA releases
     "firefox",      # used for nightly & dep builds
 )
+
+# Now that we are handed _all_ the uploads, we do not want to examine try & dep
+# builds that go into certain paths
+PRODUCTION_KEY_PREFIX_EXCLUSIONS = (
+    "/pub/firefox/tinderbox-builds/",
+)
+
 
 # We will reject any file larger than this to avoid DoS.
 MAX_EXE_SIZE = 100 * (1024 * 1024)  # 100MiB
@@ -188,22 +196,22 @@ class MozSignedObject(object):
         # know good names, rather than exclude the two currently known
         # exceptions (mar.exe & mbsdiff.exe) to reduce false positives (since a
         # invalid exe will page someone).
-        def startswithoneof(fname, prefixes):
-            result = False
-            for prefix in prefixes:
-                if fname.startswith(prefix):
-                    result = True
-                    break
-            return result
-
         basename = os.path.basename(self.artifact_name)
         do_validation = True
         if not basename.endswith(PRODUCTION_EXTENSIONS):
-            self.add_message("Excluded from validation by suffix")
+            self.add_message("Excluded from validation by file suffix")
             do_validation = False
         elif not basename.startswith(PRODUCTION_PREFIXES):
-            self.add_message("Excluded from validation by prefix")
+            self.add_message("Excluded from validation by file prefix")
             do_validation = False
+        else:
+            # ignore dependent & try builds, which is based on the first part of
+            # the key (in S3 terms), which is the "path" element of an S3 url
+            url = urllib2.urlparse.urlparse(self.artifact_name)
+            key = url.path
+            if key.startswith(PRODUCTION_KEY_PREFIX_EXCLUSIONS):
+                self.add_message("Excluded from validation by key prefix")
+                do_validation = False
         return do_validation
 
     @trace_xray_subsegment()

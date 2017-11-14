@@ -75,6 +75,16 @@ def good_keys():
 
 
 @pytest.fixture()
+def skip_keys():
+    # all need to have valid suffix now
+    # and a good filename to test the key prefix
+    payload = [
+        "pub/firefox/tinderbox-builds/Firefox.exe",
+    ]
+    return payload
+
+
+@pytest.fixture()
 def bad_files():
     payload = ['bad_1.exe', ]
     print(payload)
@@ -198,7 +208,7 @@ def test_exclude_message_when_production(set_production_true, good_files,
     # Given that PRODUCTION is missing or true
     for truthy in set_production_true:
         truthy()
-        # WHEN a any file is processed (since we have no "good files" that pass
+        # WHEN any file is processed (since we have no "good files" that pass
         # the filter)
         for fname in good_files + bad_files:
             upload_file(bucket, fname)
@@ -231,3 +241,25 @@ def test_no_exclude_production(set_production_true, good_files, good_keys):
             assert "pass" in response['results'][0]['status']
             assert not_in("Excluded from validation",
                           response['results'][0]['results'])
+
+
+@mock_s3
+@mock_sns
+@mock_sqs
+def test_exclude_production(set_production_true, good_files, skip_keys):
+    setup_aws_mocks()
+    bucket = create_bucket()
+    # Given that PRODUCTION is missing or true
+    for truthy in set_production_true:
+        truthy()
+        # WHEN a good file is processed, using a key that should be skipped
+        fname = good_files[0]
+        for keyname in skip_keys:
+            upload_file(bucket, fname, keyname)
+            event = build_event(bucket.name, keyname)
+            response = lambda_handler(event, dummy_context)
+            print("response:", response)
+            # THEN it should pass & not be marked as excluded
+            assert "pass" in response['results'][0]['status']
+            assert is_in("Excluded from validation by key",
+                         response['results'][0]['results'])
