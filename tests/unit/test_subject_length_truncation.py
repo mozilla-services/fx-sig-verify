@@ -54,6 +54,9 @@ def long_fixable_lines():
         PREFIX + "x/"*50 + SUFFIX,
         PREFIX + "/"*150 + SUFFIX,
         PREFIX + "x"*150 + '/' + SUFFIX,
+        # real message
+        "fail for s3://net-mozaws-prod-delivery-firefox/pub/firefox/releases/"
+        "52.5.0esr/win32-sha1/ms/Firefox Setup 52.5.0esr.exe",
     ]
     return payload
 
@@ -72,13 +75,13 @@ def unfixable_lines():
 def test_good(good_line):
     queue = setup_aws_mocks()
     out = MozSignedObjectViaLambda('bucket', 'key')
-    for l in good_line:
-        out.send_sns(l)
+    for line in good_line:
+        out.send_sns(line)
         count, msg_json = get_one_message(queue)
         assert count == 1
         # Subject shouldn't be changed
         msg = json.loads(msg_json)
-        assert l == msg['Subject']
+        assert line == msg['Subject']
 
     # TODO retrieve message from sqs & verify length after moto fix to pass
     # subject through (atm, passes fixed value of 'my subject')
@@ -95,8 +98,10 @@ def test_fixable(long_fixable_lines):
         assert count == 1
         msg = json.loads(msg_json)
         subject = msg['Subject']
-        print("subject in: ", l)
+        print("subject  in: ", l)
+        print("subject out: ", subject)
         assert " for s3: " in subject
+        assert len(subject) < 100
 
 
 @mock_sns
