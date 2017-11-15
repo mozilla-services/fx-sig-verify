@@ -21,17 +21,32 @@ publish: upload
 	    --code-sha-256 "$$(openssl sha1 -binary -sha256 fxsv.zip | base64 | tee /dev/tty)" \
 	    --description "$$(date -u +%Y%m%dT%H%M%S)" \
 
-.PHONY: invoke
-invoke:
-	@rm -f invoke_output.json
+.PHONY: invoke invoke-no-error invoke-error
+invoke-no-error:
+	@rm -f invoke_output-no-error.json
 	@echo "Using AWS credentials for $$AWS_DEFAULT_PROFILE in $$AWS_REGION"
+	@echo "Should not return error (but some 'fail')"
 	aws lambda invoke \
 		--function-name hwine_ffsv_dev \
-		--payload "$$(cat tests/data/S3_event_template.json)" \
-		invoke_output.json ; \
-	    if test -s invoke_output.json; then \
-		jq . invoke_output.json ; \
+		--payload "$$(cat tests/data/S3_event_template-no-error.json)" \
+		invoke_output-no-error.json ; \
+	    if test -s invoke_output-no-error.json; then \
+		jq . invoke_output-no-error.json ; \
 	    fi
+
+invoke-error:
+	@rm -f invoke_output-error.json
+	@echo "Using AWS credentials for $$AWS_DEFAULT_PROFILE in $$AWS_REGION"
+	@echo "Should return error"
+	aws lambda invoke \
+		--function-name hwine_ffsv_dev \
+		--payload "$$(cat tests/data/S3_event_template-error.json)" \
+		invoke_output-error.json ; \
+	    if test -s invoke_output-error.json; then \
+		jq . invoke_output-error.json ; \
+	    fi
+
+invoke: invoke-no-error invoke-error
 
 # idea from
 # https://stackoverflow.com/questions/23032580/reinstall-virtualenv-with-tox-when-requirements-txt-or-setup-py-changes#23039826

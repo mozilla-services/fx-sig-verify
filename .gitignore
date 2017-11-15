@@ -10,6 +10,7 @@ Dockerfile.*.built
 # test files likely to be scattered
 *.exe
 *.zip
+invoke_output*.json
 
 # Distribution / packaging
 .Python
@@ -77,9 +78,6 @@ target/
 
 # pyenv
 .python-version
-
-# celery beat schedule file
-celerybeat-schedule
 
 # Mr Developer
 .mr.developer.cfg
