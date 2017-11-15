@@ -1,8 +1,10 @@
 Changelog
 =========
-`untagged`__
+`0.4.3`__
 -----------------------------------------
-__ https://github.com/mozilla-services/fx-sig-verify/compare/v0.4.2...master
+__ https://github.com/mozilla-services/fx-sig-verify/tree/v0.4.3
+
+- Updated build process to work with new AWS Linux Docker Image
 
 `0.4.2`__
 -----------------------------------------
