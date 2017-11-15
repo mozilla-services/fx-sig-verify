@@ -1,5 +1,23 @@
 Changelog
 =========
+`untagged`__
+-----------------------------------------
+__ https://github.com/mozilla-services/fx-sig-verify/compare/v0.4.2...master
+
+`0.4.2`__
+-----------------------------------------
+__ https://github.com/mozilla-services/fx-sig-verify/tree/v0.4.2
+
+- Support for the SHA1 code signing cert used on 52esr
+
+- Skip verification for dep build artifacts (they don't use release
+  keys)
+
+- ``analyze_cloudwatch`` fixed to report max memory used, as that is the
+  meaningful parameter for tuning.
+
+- Various improvements to test cases to avoid regressions.
+
 `0.4.1`__
 -----------------------------------------
 __ https://github.com/mozilla-services/fx-sig-verify/tree/v0.4.1
