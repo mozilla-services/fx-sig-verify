@@ -1,5 +1,8 @@
-Installation on AWS Lambda
-==========================
+Installation & Testing on AWS Lambda
+====================================
+
+Installation
+------------
 
 Installation on AWS Lambda requires the following:
 
@@ -39,8 +42,9 @@ Each of these will be covered below.
     +----------+--------------+------------------------------------------------------------------------------------------------------+
 
 Testing on AWS
+--------------
 
-There are test files and Makefile targets to assist testing:
+There are test files and ``Makefile`` targets to assist testing:
 
 populate_s3
     This target will prepare an S3 bucket to be used to run the test cases.
@@ -54,3 +58,14 @@ invoke-error
     This target invokes the lambda function for files that are not available
     in the preconfigured S3 bucket. The function should exit cleanly, but
     with an error code and error message.
+
+Parameters for those targets can be entered on the command line, or just
+set in the environment:
+
+
+ ============  ====================================================
+  Variable     Usage
+ ============  ====================================================
+  S3_BUCKET    The bucket to use for testing. It must already exist.
+  LAMBDA       The name of the lambda function.
+ ============  ====================================================
