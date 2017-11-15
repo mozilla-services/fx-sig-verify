@@ -1,3 +1,9 @@
+# To customize for your aws account & bucket, export the following shell
+# variables:
+#	S3_BUCKET   <-- bucket to use
+#	LAMBDA	    <-- function name
+#
+# All other AWS information is supplied the normal way.
 
 DEV_IMAGE_NAME=fxsv/dev
 BUILD_IMAGE_NAME=fxsv/build
@@ -23,24 +29,28 @@ publish: upload
 
 .PHONY: invoke invoke-no-error invoke-error
 invoke-no-error:
+	@test -n "$$S3_BUCKET" || ( echo "You must define S3_BUCKET" ; false )
+	@test -n "$$LAMBDA" || ( echo "You must define LAMBDA" ; false )
 	@rm -f invoke_output-no-error.json
 	@echo "Using AWS credentials for $$AWS_DEFAULT_PROFILE in $$AWS_REGION"
 	@echo "Should not return error (but some 'fail')"
 	aws lambda invoke \
-		--function-name hwine_ffsv_dev \
-		--payload "$$(cat tests/data/S3_event_template-no-error.json)" \
+		--function-name $(LAMBDA) \
+		--payload "$$(sed 's/hwine-ffsv-dev/$(S3_BUCKET)/g' tests/data/S3_event_template-no-error.json)" \
 		invoke_output-no-error.json ; \
 	    if test -s invoke_output-no-error.json; then \
 		jq . invoke_output-no-error.json ; \
 	    fi
 
 invoke-error:
+	@test -n "$$S3_BUCKET" || ( echo "You must define S3_BUCKET" ; false )
+	@test -n "$$LAMBDA" || ( echo "You must define LAMBDA" ; false )
 	@rm -f invoke_output-error.json
 	@echo "Using AWS credentials for $$AWS_DEFAULT_PROFILE in $$AWS_REGION"
 	@echo "Should return error"
 	aws lambda invoke \
-		--function-name hwine_ffsv_dev \
-		--payload "$$(cat tests/data/S3_event_template-error.json)" \
+		--function-name $(LAMBDA) \
+		--payload "$$(sed 's/hwine-ffsv-dev/$(S3_BUCKET)/g' tests/data/S3_event_template-error.json)" \
 		invoke_output-error.json ; \
 	    if test -s invoke_output-error.json; then \
 		jq . invoke_output-error.json ; \
@@ -85,6 +95,19 @@ $(VENV_NAME):
 	virtualenv --python=python2.7 $@
 	source $(VENV_NAME)/bin/activate && echo req*.txt | xargs -n1 pip install -r
 	@echo "Virtualenv created in $(VENV_NAME). You must activate before continuing."
-	false
+	@false
 
-# vim: noet ts=8
+.PHONY:	populate_s3
+populate_s3:
+	@test -n "$$S3_BUCKET" || ( echo "You must define S3_BUCKET" ; false )
+	@echo "Populating s3://$(S3_BUCKET) using current credentials & region"
+	aws s3 cp tests/data/32bit_new.exe "s3://$(S3_BUCKET)/32bit new.exe"
+	aws s3 cp tests/data/32bit.exe "s3://$(S3_BUCKET)/32bit.exe"
+	aws s3 cp tests/data/32bit_new.exe "s3://$(S3_BUCKET)/32bit_new.exe"
+	aws s3 cp tests/data/32bit_new.exe "s3://$(S3_BUCKET)/32bit+new.exe"
+	aws s3 cp tests/data/32bit_sha1.exe "s3://$(S3_BUCKET)/32bit_sha1.exe"
+	aws s3 cp tests/data/bad_2.exe "s3://$(S3_BUCKET)/bad_2.exe"
+	aws s3 cp tests/data/signtool.exe "s3://$(S3_BUCKET)/signtool.exe"
+	aws s3 cp tests/data/32bit.exe "s3://$(S3_BUCKET)/nightly/test/Firefox bogus thingy.exe"
+
+	# vim: noet ts=8

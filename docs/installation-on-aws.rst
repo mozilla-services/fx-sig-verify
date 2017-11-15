@@ -37,3 +37,20 @@ Each of these will be covered below.
     +----------+--------------+------------------------------------------------------------------------------------------------------+
     | VERBOSE  | No           | (int) 0 for quiet (default); 1 for notify on all invocations; 2 for trace output in Cloud Watch logs |
     +----------+--------------+------------------------------------------------------------------------------------------------------+
+
+Testing on AWS
+
+There are test files and Makefile targets to assist testing:
+
+populate_s3
+    This target will prepare an S3 bucket to be used to run the test cases.
+
+invoke-no-error
+    This target invokes the lambda function for various files that should
+    all be processed without error by the function. (Some files will 'fail'
+    verification - that is expected.)
+
+invoke-error
+    This target invokes the lambda function for files that are not available
+    in the preconfigured S3 bucket. The function should exit cleanly, but
+    with an error code and error message.
