@@ -1,5 +1,13 @@
 Changelog
 =========
+`0.4.4`__
+-----------------------------------------
+__ https://github.com/mozilla-services/fx-sig-verify/tree/v0.4.4
+
+- Fixed `Issue 34`__ - verification should not be done on try builds.
+
+__ https://github.com/mozilla-services/fx-sig-verify/issues/34
+
 `0.4.3`__
 -----------------------------------------
 __ https://github.com/mozilla-services/fx-sig-verify/tree/v0.4.3
