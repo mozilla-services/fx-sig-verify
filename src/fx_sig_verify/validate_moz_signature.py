@@ -42,6 +42,7 @@ PRODUCTION_PREFIXES = (
 # builds that go into certain paths
 PRODUCTION_KEY_PREFIX_EXCLUSIONS = (
     "/pub/firefox/tinderbox-builds/",
+    "/pub/firefox/try-builds/",
 )
 
 

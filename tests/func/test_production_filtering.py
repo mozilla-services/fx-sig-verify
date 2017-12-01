@@ -80,6 +80,7 @@ def skip_keys():
     # and a good filename to test the key prefix
     payload = [
         "pub/firefox/tinderbox-builds/Firefox.exe",
+        "pub/firefox/try-builds/Firefox.exe",
     ]
     return payload
 
