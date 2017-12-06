@@ -19,7 +19,7 @@ ANY_STARTER = ''
 
 # timestamp is optional (wasn't in original logs)
 # and may or may not have ANSI colorizing
-TIME_STAMP = r'''^(?:\x1b\[33m)?(?P<timestamp>[\d:.T-]{23}Z)(?:\x1b\[0m)? '''
+TIME_STAMP = r'''^(?:\x1b\[33m)?(?P<timestamp>[\d:.T-]{23}Z)?(?:\x1b\[0m)? '''
 
 PERF_OUTPUT = """
 {invocations:19,d} runs
@@ -170,8 +170,9 @@ class JsonSummerizer(Summerizer):
                 except IndexError:
                     pass
         # compute uncategorized failures
-        known_fails = reduce(lambda x, y: x+y, [v for k, v in counts.iteritems()
-                                                if k.endswith("Signature")], 0)
+        known_fails = reduce(lambda x, y: x+y,
+                             [v for k, v in counts.iteritems()
+                              if k.endswith("Signature")], 0)
         counts['other'] = counts['fail'] - known_fails
         self.counts = counts
 
@@ -263,7 +264,8 @@ class MetricSummerizer(Summerizer):
         c["max_memory_pcnt"] = (c["max_memory_invocations"] * 100
                                 / invocations)
         c["avg_memory"] = int(math.ceil(c["total_memory"] / invocations))
-        unprocessed = [k for k, v in self.retried_requests.iteritems() if v > 0]
+        unprocessed = [k for k, v in self.retried_requests.iteritems()
+                       if v > 0]
         c["unprocessed"] = unprocessed
         c["retry_never_succeeded"] = len(unprocessed)
         c["total_time_seconds"] = c["total_time"] / 1000
@@ -282,8 +284,11 @@ class ExtractSummarizer(Summerizer):
     TRACEBACK = 'Traceback'
 
     # compile (once) the patterns we need
-    req_id_pattern = re.compile(r'''  # noqa
-                                ^(?P<line_type>\S+)\s+  # START, END, or REPORT
+    json_pattern = re.compile(TIME_STAMP + r'''
+                              \s*(?P<json_string>{.*})''',
+                              re.VERBOSE)
+    req_id_pattern = re.compile(TIME_STAMP + r'''  # noqa
+                                \s*(?P<line_type>\S+)\s+  # START, END, or REPORT
                                 RequestId:\s+(?P<request_id>\S+).*''',
                                 re.VERBOSE)
     traceback_pattern = re.compile(TIME_STAMP + TRACEBACK)
@@ -304,9 +309,10 @@ class ExtractSummarizer(Summerizer):
         json or a report line
         """
         try:
-            datum = json.loads(line)
+            match = self.json_pattern.search(line)
+            datum = json.loads(match.group('json_string'))
             req_id = datum['request_id']
-        except ValueError:
+        except (ValueError, AttributeError):
             datum = line.strip()
             match = self.req_id_pattern.search(datum)
             if match:
@@ -334,8 +340,8 @@ class ExtractSummarizer(Summerizer):
         # each request id should have a START, END, and REPORT line, plus one
         # JSON line.
         starters = ('S', 'E', 'R', '{', )
-        line_start_patterns = map(re.compile,
-                                  map(lambda x: self.TIME_STAMP+x, starters))
+        line_start_patterns = map(lambda x: re.compile(x, re.VERBOSE),
+                                  map(lambda x: TIME_STAMP+'\s*'+x, starters))
         funky_count = 0
         for rqst_id, lines in self.details.iteritems():
             counts = [0, 0, 0, 0]
@@ -346,18 +352,25 @@ class ExtractSummarizer(Summerizer):
             funky = len(lines) != 4 or counts != [1, 1, 1, 1]
             if funky:
                 funky_count += 1
+                print(counts, len(lines))
                 print("\nConsistency error:")
                 self.print_rqst(rqst_id)
         if self.verbose:
             print("Checked {} requests for consistency, found {} "
                   "inconsistencies.".
                   format(len(self.details), funky_count))
+        if funky_count:
+            print()  # blank line for separation
 
-    def print_rqst(self, rqst_id):
-        indent = '\n   '
-        print("{} had {} log lines.".format(rqst_id,
-                                            len(self.details[rqst_id])))
-        print(indent[2:], indent.join([str(x)[:80] for x in
+    def print_rqst(self, rqst_id, indent=None, header=True, num_cols=80):
+        if indent is None:
+            # allow empty string for indent
+            indent = '   '
+        indent = '\n' + indent
+        if header:
+            print("{} had {} log lines.".format(rqst_id,
+                                                len(self.details[rqst_id])))
+        print(indent[1:] + indent.join([str(x)[:num_cols] for x in
                                        self.details[rqst_id]]))
 
     def print_final_report(self):
@@ -375,7 +388,7 @@ class ExtractSummarizer(Summerizer):
         # always do the consistency check
         self.print_consistency_errors()
         for r in self.req_ids:
-            self.print_rqst(r)
+            self.print_rqst(r, header=False, num_cols=None, indent='')
 
 
 def summerizer_factory(starter, **kwargs):
@@ -429,7 +442,7 @@ def main(argv=None):
     logging.basicConfig(level=logging.INFO, format='%(message)s')
     args = parse_args(argv)
     summary = summerizer_factory(**args.__dict__)
-    starter_pattern = re.compile(TIME_STAMP + args.starter)
+    starter_pattern = re.compile(TIME_STAMP + args.starter, re.VERBOSE)
     for l in filter_for_line_type(starter_pattern, fileinput.input(args.file)):
         summary.add_line(l)
     if args.summarize or args.req_ids:

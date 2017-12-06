@@ -1,4 +1,9 @@
 #!/bin/bash
+
+# show current values in help
+LAMBDA=${LAMBDA:-fx-sig-verify-prod}
+AWS_REGION=${AWS_REGION:-us-east-1}
+
 USAGE="usage: ${0##*/}
 Retrieve CloudWatch logs for fx-sig-verify-prod. AWS credentials must
 already be available in environment.
@@ -7,15 +12,12 @@ Environment:
     START_TIME  date expression for start (defaults to name in last
                 file)
     END_TIME    date expression for end
-    LAMBDA      specify function name (default fx-sig-verify-prod)
-    AWS_REGION  specify region (default us-east-1)
+    LAMBDA      specify function name (current $LAMBDA)
+    AWS_REGION  specify region (current $AWS_REGION)
 
 Options:
     -h|--help   this message
 "
-
-LAMBDA=${LAMBDA:-fx-sig-verify-prod}
-AWS_REGION=${AWS_REGION:-us-east-1}
 
 warn() { for m; do echo "$m"; done 1>&2 ; }
 die() { warn "$@"; exit 2; }
@@ -42,7 +44,7 @@ if [[ -z $START_TIME ]]; then
     START_TIME=${last_file##*logs-}
     START_TIME=${START_TIME%%.txt}
 fi
-echo "Using start time of $START_TIME"
+echo "Using start time of $START_TIME as $AWS_DEFAULT_PROFILE in $AWS_REGION"
 
 # build filename for now
 DATE=$(which gdate || which date)
