@@ -19,7 +19,12 @@ ANY_STARTER = ''
 
 # timestamp is optional (wasn't in original logs)
 # and may or may not have ANSI colorizing
-TIME_STAMP = r'''^(?:\x1b\[33m)?(?P<timestamp>[\d:.T-]{23}Z)?(?:\x1b\[0m)? '''
+# Note that only 1 trailing space is part of the timestamp
+TIME_STAMP = r'''^(?:\x1b\[33m)? # ANSI coloring
+                (?P<timestamp>[\d:.T-]{23}Z)?  # timestamp
+                (?:\x1b\[0m)? # ANSI coloring
+                \s? # trailing space
+                '''
 
 PERF_OUTPUT = """
 {invocations:19,d} runs
@@ -88,7 +93,8 @@ class JsonSummerizer(Summerizer):
     """
 
     json_pattern = re.compile(TIME_STAMP +
-                              r'''\s*(?P<json>.*\S)\s*$''')
+                              r'''\s*(?P<json>.*\S)\s*$''',
+                              re.VERBOSE)
 
     def __init__(self, summarize=False, verbose=False, req_ids=None, **_):
         self.data = []
@@ -108,7 +114,7 @@ class JsonSummerizer(Summerizer):
     def print_final_report(self):
         if self.summarize:
             self.compute_totals()
-            # HACK - since we exand counts, se need default values
+            # HACK - since we expand counts, we need default values
             for k in JSON_OUTPUT_KEYS:
                 self.counts[k] += 0
             print(JSON_OUTPUT.format(**self.counts))
@@ -291,7 +297,7 @@ class ExtractSummarizer(Summerizer):
                                 \s*(?P<line_type>\S+)\s+  # START, END, or REPORT
                                 RequestId:\s+(?P<request_id>\S+).*''',
                                 re.VERBOSE)
-    traceback_pattern = re.compile(TIME_STAMP + TRACEBACK)
+    traceback_pattern = re.compile(TIME_STAMP + TRACEBACK, re.VERBOSE)
 
     def __init__(self, req_ids=None, verbose=False, **_):
         self.details = collections.defaultdict(list)
@@ -352,10 +358,13 @@ class ExtractSummarizer(Summerizer):
             funky = len(lines) != 4 or counts != [1, 1, 1, 1]
             if funky:
                 funky_count += 1
-                print(counts, len(lines))
-                print("\nConsistency error:")
+                print()
+                if self.verbose:
+                    print(counts, len(lines))
+                print("Consistency error:")
                 self.print_rqst(rqst_id)
         if self.verbose:
+            print()
             print("Checked {} requests for consistency, found {} "
                   "inconsistencies.".
                   format(len(self.details), funky_count))
