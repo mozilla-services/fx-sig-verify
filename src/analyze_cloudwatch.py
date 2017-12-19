@@ -408,7 +408,7 @@ def summerizer_factory(starter, **kwargs):
     elif starter is ANY_STARTER:
         return ExtractSummarizer(**kwargs)
     else:
-        raise ValueError("No summary for '{}' yet".format(starter))
+        raise SystemExit("No summary for '{}' yet".format(starter))
 
 
 def filter_for_line_type(pattern, lines):
