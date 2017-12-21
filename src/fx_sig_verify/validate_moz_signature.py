@@ -320,6 +320,7 @@ class MozSignedObjectViaLambda(MozSignedObject):
         super(type(self), self).__init__(*args, **kwargs)
         self.bucket_name = bucket
         self.key_name = key
+        self.s3_wait_time = 0
         self.artifact_name = "s3://{}/{}".format(bucket, key)
 
         self.had_s3_error = False
@@ -374,6 +375,7 @@ class MozSignedObjectViaLambda(MozSignedObject):
             'key': self.key_name,
             'status': self.get_status(),
             'results': self.errors + self.messages,
+            's3wait': self.s3_wait_time,
         }
         return json_info
 
@@ -382,14 +384,24 @@ class MozSignedObjectViaLambda(MozSignedObject):
         s3_client = boto3.client('s3')
         debug("in get_flo")
         try:
+            # Make sure the object is really available taken from
+            #   https://blog.rackspace.com/the-devnull-s3-bucket-hacking-with-aws-lambda-and-python
+            # Don't use defaults, though -- that's 100 sec during testing!
+            start_waiting = time.time()
+            waiter = s3_client.get_waiter('object_exists')
+            waiter.wait(Bucket=self.bucket_name, Key=self.key_name,
+                        WaiterConfig={'Delay': 3, 'MaxAttempts': 3})
             result = s3_client.get_object(Bucket=self.bucket_name,
                                           Key=self.key_name)
         except Exception as e:
-            text = repr(e)[:256]
+            debug("s3 exceptions type: {}".format(type(e)))
             self.had_s3_error = True
+            text = repr(e)[:256]
             self.add_error("failed to process s3 object {}/{} '{}'"
                            .format(self.bucket_name, self.key_name, text))
             raise
+        finally:
+            self.s3_wait_time = time.time() - start_waiting
 
         debug("after s3_client.get_object() result={}".format(type(result)))
         if result['ContentLength'] > MAX_EXE_SIZE:
