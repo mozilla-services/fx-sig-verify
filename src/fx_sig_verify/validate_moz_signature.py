@@ -77,8 +77,8 @@ del F, univ
 
 class MozSignedObject(object):
     """
-    Retain the state and context of the object we're checking. This includes the
-    name of the object and the final status.
+    Retain the state and context of the object we're checking. This includes
+    the name of the object and the final status.
 
     Sub class for different conventions on name and status reporting.
     """
@@ -98,7 +98,8 @@ class MozSignedObject(object):
             try:
                 cls.production_criteria = int(production_override)
             except ValueError:
-                cls.production_criteria = False if production_override else True
+                cls.production_criteria = (False if production_override
+                                           else True)
             print("production criteria {} based on {}"
                   .format(bool(cls.production_criteria), production_override))
 
@@ -207,8 +208,9 @@ class MozSignedObject(object):
             self.add_message("Excluded from validation by file prefix")
             do_validation = False
         else:
-            # ignore dependent & try builds, which is based on the first part of
-            # the key (in S3 terms), which is the "path" element of an S3 url
+            # ignore dependent & try builds, which is based on the first part
+            # of the key (in S3 terms), which is the "path" element of an S3
+            # url
             url = urllib2.urlparse.urlparse(self.artifact_name)
             key = url.path
             if key.startswith(PRODUCTION_KEY_PREFIX_EXCLUSIONS):
@@ -229,8 +231,8 @@ class MozSignedObject(object):
 
         :returns boolean: True if object has passed all tests.
 
-        :raises SigVerifyException: if any specific problem is identified in the
-            object
+        :raises SigVerifyException: if any specific problem is identified in
+            the object
         """
         objf = self.get_flo()
         self.show_file_stats(objf)
@@ -303,8 +305,8 @@ class MozSignedObject(object):
         # TODO - validate if this is okay for now.
         # base validity on some combo of auth fields.
 
-        # signing_cert_id is a tuple with a last element being the serial number
-        # of the certificate. That is a known quantity for our products.
+        # signing_cert_id is a tuple with a last element being the serial
+        # number of the certificate. That is a known quantity for our products.
         cert_serial_number = auth.signing_cert_id[-1]
         valid_signature = (auth.has_countersignature and (cert_serial_number in
                                                           VALID_CERTS))
@@ -331,13 +333,13 @@ class MozSignedObjectViaLambda(MozSignedObject):
         # error flag (above), and using that to raise IOError after doing all
         # our reporting (below).
         #
-        # This "works well" in practice, as production payloads only contain one
-        # S3 event per invocation at this time. However, the event message will
-        # show support multiple objects per invocation. Currently, we only use
-        # the multi-object mode for testing. If S3 starts using multi-object
-        # mode, we would cause retry of all of the objects, not just the
-        # failing object. Any problem this might cause will be reported by the
-        # analyze_cloudwatch script.
+        # This "works well" in practice, as production payloads only contain
+        # one S3 event per invocation at this time. However, the event message
+        # will show support multiple objects per invocation. Currently, we only
+        # use the multi-object mode for testing. If S3 starts using
+        # multi-object mode, we would cause retry of all of the objects, not
+        # just the failing object. Any problem this might cause will be
+        # reported by the analyze_cloudwatch script.
 
     def get_location(self):
         "For S3, we need the bucket & key names"
@@ -429,8 +431,8 @@ class MozSignedObjectViaLambda(MozSignedObject):
         subject = msg.split('\n')[0]
         if len(subject) >= 100:
             # split assuming URL, then retain result (index 0) and file name
-            # (index -1). File name should be sufficient to allow page recipient
-            # to decide urgency of further investigation.
+            # (index -1). File name should be sufficient to allow page
+            # recipient to decide urgency of further investigation.
             pieces = subject.split('/')
             subject = "{} ... {}".format(pieces[0], pieces[-1])
             if len(subject) >= 100:
@@ -438,8 +440,9 @@ class MozSignedObjectViaLambda(MozSignedObject):
                 subject = "Truncated subject, examine message"
 
         # append bucket & key, short key first
-        msg += "\n{}\nkey={}\nbucket={}".format(os.path.basename(self.key_name),
-                                                self.key_name, self.bucket_name)
+        msg += "\n{}\nkey={}\nbucket={}".format(
+                                            os.path.basename(self.key_name),
+                                            self.key_name, self.bucket_name)
         # hack to get traceback in email
         if e:
             import traceback
