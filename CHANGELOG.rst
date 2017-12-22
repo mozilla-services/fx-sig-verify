@@ -1,5 +1,15 @@
 Changelog
 =========
+`0.4.5`__
+-----------------------------------------
+__ https://github.com/mozilla-services/fx-sig-verify/tree/v0.4.5
+
+- Trying new approach to reduce S3 retries.
+
+- Use pytest more better.
+
+- Clean up code per PEP-8.
+
 `0.4.4`__
 -----------------------------------------
 __ https://github.com/mozilla-services/fx-sig-verify/tree/v0.4.4
