@@ -93,7 +93,8 @@ Dockerfile.build-environment.built: Dockerfile.build-environment
 
 $(VENV_NAME):
 	virtualenv --python=python2.7 $@
-	source $(VENV_NAME)/bin/activate && echo req*.txt | xargs -n1 pip install -r
+	# if M2Crypto install fails, see notes in tox.ini
+	. $(VENV_NAME)/bin/activate && echo req*.txt | xargs -n1 pip install -r
 	@echo "Virtualenv created in $(VENV_NAME). You must activate before continuing."
 	@false
 
