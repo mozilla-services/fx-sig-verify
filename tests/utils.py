@@ -65,8 +65,8 @@ good_key_names_list = [
     "Firefox sadf asfsd.exe",
     "firefox.exe",
     "firefox-asdjsll.exe",
-    "/nightly/fred/firefox-asdkjds.exe",
-    "/release/sam/Firefox asdfe sss.exe",
+    "nightly/fred/firefox-asdkjds.exe",
+    "release/sam/Firefox asdfe sss.exe",
 ]
 
 
