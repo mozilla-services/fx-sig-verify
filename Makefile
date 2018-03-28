@@ -98,6 +98,19 @@ $(VENV_NAME):
 	@echo "Virtualenv created in $(VENV_NAME). You must activate before continuing."
 	@false
 
+# Hack -- assume if jquery isn't there, we haven't built, so need to
+# install needed packages
+dist/docs/_static/jquery.js:
+	pip install -r docs/requirements.txt
+
+.PHONY:	docs doc_build
+doc_files := $(wildcard docs/.rst) docs/requirements.txt dist/docs/_static/jquery.js
+doc_build: $(doc_files)
+	sphinx-build -E -b html docs dist/docs
+docs: doc_build
+	@echo "Serving the docs on <http://localhost:8000/index.html>, ^C to stop"
+	-cd dist/docs && python -m SimpleHTTPServer 8000
+
 .PHONY:	populate_s3
 populate_s3:
 	@test -n "$$S3_BUCKET" || ( echo "You must define S3_BUCKET" ; false )
