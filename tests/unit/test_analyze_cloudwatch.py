@@ -44,7 +44,7 @@ def test_report_extract(capsys):
 
 
 LineData = namedtuple('LineData', 'value text'.split())
-expected_values_by_row = [5, 2, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, None, 0, None, 5]
+expected_values_by_row = [7, 2, 1, 3, 1, 0, 0, 0, 0, 0, 0, 0, None, 0, None, 7]
 
 
 def extract_data(line):
