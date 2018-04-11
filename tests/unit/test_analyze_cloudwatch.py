@@ -1,6 +1,6 @@
 # Check that we can correctly extract the cloudwatch data
 
-
+from collections import namedtuple
 import re
 
 from analyze_cloudwatch import main as analyze_cloudwatch
@@ -41,3 +41,36 @@ def test_report_extract(capsys):
         # don't count the final line if empty
         output_lines -= 1
     assert output_lines == report_count
+
+
+LineData = namedtuple('LineData', 'value text'.split())
+expected_values_by_row = [7, 2, 1, 3, 1, 0, 0, 0, 0, 0, 0, 0, None, 0, None, 7]
+
+
+def extract_data(line):
+    # first item on line is a formated number (has commas)
+    # extract that and convert to number
+    # return a data tuple
+    line = line.strip()
+    try:
+        possible_num = line.split(None, 1)[0]
+        value = int(possible_num, 10)
+    except (IndexError, ValueError):
+        value = None
+    return LineData(value, line)
+
+
+def test_exclusion_counts(capsys):
+    # Given a data file with various exclusion records
+    # When we ask for exclusion counts
+    analyze_cloudwatch(['--json', '--summarize', DATA_FILE])
+    stdout, stderr = capsys.readouterr()
+    lines = []
+    for line in stdout.split('\n'):
+        # convert the line into a number & line
+        line_data = extract_data(line)
+        lines.append(line_data)
+    # Then the numbers should match what we expect:
+    for i, row_value in enumerate(expected_values_by_row):
+        print("{}~{}; '{}'".format(lines[i].value, row_value, lines[i].text))
+        assert lines[i].value == row_value
