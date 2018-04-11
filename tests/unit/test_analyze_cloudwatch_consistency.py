@@ -10,7 +10,9 @@ passing_data_files = [
 ]
 
 failing_data_files = [
+    # back to back for same object
     "tests/data/cw_log_s3_fail_2_runs.txt",
+    # intervening good run
     "tests/data/cw_log_s3_fail_3_runs.txt",
 ]
 

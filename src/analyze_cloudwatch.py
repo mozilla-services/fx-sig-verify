@@ -41,8 +41,11 @@ PERF_OUTPUT = """
 """.strip()
 
 JSON_OUTPUT = """
-{pass:6,d} passed
-        {Excluded:10,d} exe's not validated
+{pass:8,d} passed
+        {SkipFileSuffix:10,d} non .exe skipped
+        {SkipFilePrefix:10,d} non-firefox .exe skipped
+        {SkipKeyPrefix:10,d} non shippable skipped
+        {FilesChecked:10,d} signatures examined
 {SigVerifyNoSignature:10,d} exe without signature
 {SigVerifyBadSignature:10,d} exe with bad signature
 {SigVerifyNonMozSignature:10,d} exe with non-Mozilla signature
@@ -51,15 +54,18 @@ JSON_OUTPUT = """
         {S3UnquoteSuccess:10,d} that then succeeded
 {other:10,d} other failures
        ---
-{fail:6,d} total failed
-------
-{total:6,d} processed
-======
+{fail:8,d} total failed
+--------
+{total:8,d} processed
+========
 """.strip()
 #  need the keys, as when rendered, no default values
 JSON_OUTPUT_KEYS = (
     "pass",
-    "Excluded",
+    "SkipFileSuffix",
+    "SkipFilePrefix",
+    "SkipKeyPrefix",
+    "FilesChecked",
     "SigVerifyNoSignature",
     "SigVerifyBadSignature",
     "SigVerifyNonMozSignature",
@@ -171,10 +177,21 @@ class JsonSummerizer(Summerizer):
                          isin(reasons, 'get_object worked'),
                          "S3UnquoteSuccess")
                     incr(counts,
-                         isin(reasons, 'Excluded from validation by prefix'),
-                         "Excluded")
+                         isin(reasons, 'Excluded from validation by file suffix'),
+                         "SkipFileSuffix")
+                    incr(counts,
+                         isin(reasons, 'Excluded from validation by file prefix'),
+                         "SkipFilePrefix")
+                    incr(counts,
+                         isin(reasons, 'Excluded from validation by key prefix'),
+                         "SkipKeyPrefix")
                 except IndexError:
                     pass
+        # compute files examined for signature compliance
+        counts["FilesChecked"] = (counts["total"]
+                                  - counts["SkipFileSuffix"]
+                                  - counts["SkipKeyPrefix"]
+                                  - counts["SkipFilePrefix"])
         # compute uncategorized failures
         known_fails = reduce(lambda x, y: x+y,
                              [v for k, v in counts.iteritems()
@@ -277,6 +294,7 @@ class MetricSummerizer(Summerizer):
         c["total_time_seconds"] = c["total_time"] / 1000
         c["bill_time_seconds"] = c["bill_time"] / 1000
         c["gb_seconds"] = (c["bill_time_seconds"] * c["total_allocated_memory"]
+                           / invocations
                            / 1024.)
         self.counts = c
 
