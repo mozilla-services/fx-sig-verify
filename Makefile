@@ -16,6 +16,7 @@ fxsv.zip: Dockerfile.build-environment.built
 upload: fxsv.zip
 	@echo "Using AWS credentials for $$AWS_DEFAULT_PROFILE in $$AWS_REGION"
 	aws lambda update-function-code \
+	    --region $${AWS_REGION} \
 	    --function-name hwine_ffsv_dev \
 	    --zip-file fileb://$(PWD)/fxsv.zip \
 
@@ -23,6 +24,7 @@ upload: fxsv.zip
 publish: upload
 	@echo "Using AWS credentials for $$AWS_DEFAULT_PROFILE in $$AWS_REGION"
 	aws lambda publish-version \
+	    --region $${AWS_REGION} \
 	    --function-name hwine_ffsv_dev \
 	    --code-sha-256 "$$(openssl sha1 -binary -sha256 fxsv.zip | base64 | tee /dev/tty)" \
 	    --description "$$(date -u +%Y%m%dT%H%M%S)" \
@@ -35,6 +37,7 @@ invoke-no-error:
 	@echo "Using AWS credentials for $$AWS_DEFAULT_PROFILE in $$AWS_REGION"
 	@echo "Should not return error (but some 'fail')"
 	aws lambda invoke \
+		--region $${AWS_REGION} \
 		--function-name $(LAMBDA) \
 		--payload "$$(sed 's/hwine-ffsv-dev/$(S3_BUCKET)/g' tests/data/S3_event_template-no-error.json)" \
 		invoke_output-no-error.json ; \
@@ -49,6 +52,7 @@ invoke-error:
 	@echo "Using AWS credentials for $$AWS_DEFAULT_PROFILE in $$AWS_REGION"
 	@echo "Should return error"
 	aws lambda invoke \
+		--region $${AWS_REGION} \
 		--function-name $(LAMBDA) \
 		--payload "$$(sed 's/hwine-ffsv-dev/$(S3_BUCKET)/g' tests/data/S3_event_template-error.json)" \
 		invoke_output-error.json ; \
