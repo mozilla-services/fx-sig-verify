@@ -51,11 +51,15 @@ class MozSignedObjectViaCLI(MozSignedObject):
         flo = open(self.artifact_name, 'rb')
         return flo
 
-    def process_one_local_file(self):
+    def process_one_local_file(self, args):
         if self.verbose:
             print('Processing {}'.format(self.artifact_name))
         try:
-            valid_sig = self.check_exe()
+            if ((args.mar or self.artifact_name.endswith('.mar'))
+                    and not args.exe):
+                valid_sig = self.check_mar()
+            else:
+                valid_sig = self.check_exe()
         except Exception as e:
             valid_sig = False
             if isinstance(e, SigVerifyException):
@@ -72,9 +76,15 @@ def parse_args(cmd_line=None):
     parser.add_argument('--version', action='version',
                         version="%(prog)s " + fx_sig_verify.__version__,
                         help='print version and exit')
+    parser.add_argument('--exe', help='Force treating as Windows exe',
+                        action="store_true")
+    parser.add_argument('--mar', help='Force treating as Mozilla MAR file',
+                        action="store_true")
     parser.add_argument('suspect', help='file to check for validity',
                         nargs=1)
     args = parser.parse_args(cmd_line)
+    if args.mar and args.exe:
+        parser.error("Can not set both --exe & --mar options.")
     return args
 
 
@@ -91,7 +101,7 @@ def main(cmd_line=None):
     args = parse_args(cmd_line=cmd_line)
     artifact = MozSignedObjectViaCLI(args.suspect[0])
     try:
-        valid = artifact.process_one_local_file()
+        valid = artifact.process_one_local_file(args)
     except SigVerifyException:
         valid = False
     artifact.report_validity(valid)

@@ -219,6 +219,27 @@ class MozSignedObject(object):
         return do_validation
 
     @trace_xray_subsegment()
+    def check_mar(self):
+        """
+        Determine if the contents of `objf` are a valid Mozilla MAR file
+        signed by one of the correct keys.
+
+        will likely be refactored, but start here
+
+        :returns boolean: True if object has passed all tests.
+
+        :raises SigVerifyException: if any specific problem is identified in
+            the object
+        """
+        objf = self.get_flo()
+        self.show_file_stats(objf)
+        msg = "MAR signature verification not implemented yet"
+        self.add_message(msg)
+        if self.verbose:
+            print(msg)
+        return False
+
+    @trace_xray_subsegment()
     def check_exe(self):
         """
         Determine if the contents of `objf` are a valid Windows executable
