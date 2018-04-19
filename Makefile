@@ -5,10 +5,21 @@
 #
 # All other AWS information is supplied the normal way.
 
-DEV_IMAGE_NAME=fxsv/dev
-BUILD_IMAGE_NAME=fxsv/build
-INSTANCE_NAME=fxsv_latest
-VENV_NAME=venv
+DEV_IMAGE_NAME	:= fxsv/dev
+BUILD_IMAGE_NAME:= fxsv/build
+INSTANCE_NAME	:= fxsv_latest
+VENV_NAME	:= venv
+
+.DEFAULT_GOAL	:= fxsv.zip
+
+help:
+	@echo "Targets:"
+	@echo "    fxsv.zip (default) build zip file in docker container"
+	@echo "    commit   update any files derived from another, prior to committing"
+	@echo "    upload   upload and install zip file as latest lambda version"
+	@echo "    invoke   invoke lambda with content already on S3"
+	@echo "    populate_s3  upload test files to S3"
+	@echo "    help     show this text"
 
 # custom build
 fxsv.zip: Dockerfile.build-environment.built
@@ -127,5 +138,24 @@ populate_s3:
 	aws s3 cp tests/data/bad_2.exe "s3://$(S3_BUCKET)/bad_2.exe"
 	aws s3 cp tests/data/signtool.exe "s3://$(S3_BUCKET)/signtool.exe"
 	aws s3 cp tests/data/32bit.exe "s3://$(S3_BUCKET)/nightly/test/Firefox bogus thingy.exe"
+
+# support for generated files
+UPDATE_BEFORE_COMMIT_FILES := requirements.txt requirements-dev.txt Pipfile.lock
+
+# make pipenv easier
+Pipfile.lock: Pipfile
+	pipenv lock
+requirements.txt: Pipfile.lock
+	pipenv lock --requirements >$@
+requirements-dev.txt: Pipfile.lock
+	pipenv lock --requirements --dev >$@
+
+.PHONY:  commit help _clean_commit _clean_validate
+
+_clean_commit:
+	rm -f $(UPDATE_BEFORE_COMMIT_FILES)
+
+commit: _clean_commit $(UPDATE_BEFORE_COMMIT_FILES)
+
 
 	# vim: noet ts=8
