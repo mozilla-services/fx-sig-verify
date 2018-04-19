@@ -34,7 +34,8 @@ setup(
     ),
     author='Hal Wine',
     author_email='hwine@mozilla.com',
-    url='https://github.com/hwine/fx-sig-verify',
+    url='https://github.com/mozilla-services/fx-sig-verify',
+    # cmdclass={'install': install},
     packages=find_packages('src'),
     package_dir={'': 'src'},
     py_modules=[splitext(basename(path))[0] for path in glob('src/*.py')],
@@ -68,9 +69,13 @@ setup(
                     ],
 
     install_requires=[
-        "M2Crypto==0.26.0",
-        "fleece==0.15.1",
+        # N.B. M2Crypto is best compiled from source (required on ubuntu if
+        # you're working in a virtualenv). The full URL is in the
+        # requirements.txt file.
+        "M2Crypto",
+        "fleece",
         "pyasn1==0.2.3",
+        "mar",
         # verify-sigs is vendored in, so not listed here
         # "verify-sigs",
     ],
