@@ -7,11 +7,11 @@ COPY . .
 
 # Runtime requirements in the src tree, now that it's there
 #COPY requirements.txt ./
-RUN pip install --find-links $PWD --requirement requirements.txt -t src/lib
+RUN pip install --find-links $PWD --requirement requirements.txt -t $PWD/src/lib
 
 # Cause everything to be compiled, but not re-downloaded (for some
 # reason, pip doesn't honor the requirements file at this point)
-RUN pip install -t /tmp/fxsv --find-links $PWD --no-index .
+RUN pip install -t /tmp/fxsv --find-links $PWD .
 
 # zip up the result
 RUN date
@@ -19,7 +19,7 @@ RUN cd /tmp/fxsv && zip -9r ../fxsv.zip .
 RUN date ; ls -l /tmp/ ; md5sum /tmp/fxsv.zip
 
 # now run some tests to ensure we got a good build
-COPY ./tests/data/32bit.exe .
-RUN pip install --find-links $PWD --no-index -e . && python -m fx_sig_verify 32bit.exe
+RUN pip install --find-links $PWD . && python -m fx_sig_verify tests/data/32bit.exe && python -m fx_sig_verify tests/data/test-bz2.mar
+RUN pip install pytest && py.test tests
 
 #ENTRYPOINT ["bash"]
