@@ -5,21 +5,15 @@ WORKDIR /usr/src/app
 # get the main source
 COPY . .
 
-# Runtime requirements in the src tree, now that it's there
-#COPY requirements.txt ./
-RUN pip install --find-links $PWD --requirement requirements.txt -t $PWD/src/lib
-
-# Cause everything to be compiled, but not re-downloaded (for some
-# reason, pip doesn't honor the requirements file at this point)
-RUN pip install -t /tmp/fxsv --find-links $PWD .
-
-# zip up the result
-RUN date
-RUN cd /tmp/fxsv && zip -9r ../fxsv.zip .
-RUN date ; ls -l /tmp/ ; md5sum /tmp/fxsv.zip
+RUN rm -rf target/content ; mkdir -p target/content
+RUN pip install --quiet --find-links $PWD --requirement requirements.txt -t target/content
+RUN cp -r src/* target/content && rm -rf target/content/{boto,docutils}*
+RUN cd target/content ; python -m compileall -q -f .
+# Zip up, include leading-dot-binaries
+RUN cd target/content ; zip --quiet -9r /tmp/fxsv.zip * .??*
 
 # now run some tests to ensure we got a good build
-RUN pip install --find-links $PWD . && python -m fx_sig_verify tests/data/32bit.exe && python -m fx_sig_verify tests/data/test-bz2.mar
-RUN pip install pytest && py.test tests
+RUN pip install --quiet --find-links $PWD . && python -m fx_sig_verify tests/data/32bit.exe && python -m fx_sig_verify tests/data/test-bz2.mar
+RUN pip install --quiet pytest && py.test tests
 
 #ENTRYPOINT ["bash"]
