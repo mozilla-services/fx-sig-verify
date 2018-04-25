@@ -40,7 +40,21 @@ publish: upload
 	    --code-sha-256 "$$(openssl sha1 -binary -sha256 fxsv.zip | base64 | tee /dev/tty)" \
 	    --description "$$(date -u +%Y%m%dT%H%M%S)" \
 
-.PHONY: invoke invoke-no-error invoke-error
+.PHONY: invoke invoke-no-error invoke-error invoke-mar
+invoke-mar:
+	@test -n "$$S3_BUCKET" || ( echo "You must define S3_BUCKET" ; false )
+	@test -n "$$LAMBDA" || ( echo "You must define LAMBDA" ; false )
+	@rm -f invoke_output-mar-no-error.json
+	@echo "Using AWS credentials for $$AWS_DEFAULT_PROFILE in $$AWS_REGION"
+	@echo "Should not return error (but some 'fail')"
+	aws lambda invoke \
+		--region $${AWS_REGION} \
+		--function-name $(LAMBDA) \
+		--payload "$$(sed 's/hwine-ffsv-dev/$(S3_BUCKET)/g' tests/data/S3_event_template-mar-no-error.json)" \
+		invoke_output-mar-no-error.json ; \
+	    if test -s invoke_output-mar-no-error.json; then \
+		jq . invoke_output-mar-no-error.json ; \
+	    fi
 invoke-no-error:
 	@test -n "$$S3_BUCKET" || ( echo "You must define S3_BUCKET" ; false )
 	@test -n "$$LAMBDA" || ( echo "You must define LAMBDA" ; false )
@@ -71,7 +85,7 @@ invoke-error:
 		jq . invoke_output-error.json ; \
 	    fi
 
-invoke: invoke-no-error invoke-error
+invoke: invoke-no-error invoke-mar invoke-error
 
 # idea from
 # https://stackoverflow.com/questions/23032580/reinstall-virtualenv-with-tox-when-requirements-txt-or-setup-py-changes#23039826
@@ -156,6 +170,9 @@ _clean_commit:
 	rm -f $(UPDATE_BEFORE_COMMIT_FILES)
 
 commit: _clean_commit $(UPDATE_BEFORE_COMMIT_FILES)
+	# mar test data
+	aws s3 cp tests/data/test-bz2.mar "s3://$(S3_BUCKET)/valid.mar"
+	aws s3 cp tests/data/test-xz.mar "s3://$(S3_BUCKET)/nightly/invalid.mar"
 
 
 	# vim: noet ts=8
