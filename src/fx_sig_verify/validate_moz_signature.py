@@ -1,4 +1,5 @@
 from __future__ import print_function
+from __future__ import absolute_import
 from fleece import boto3
 from fleece.xray import (monkey_patch_botocore_for_xray,
                          trace_xray_subsegment)
@@ -12,9 +13,16 @@ import urllib
 import urllib2
 
 import fx_sig_verify
-from verify_sigs import auth_data
-from verify_sigs import fingerprint
-from verify_sigs import pecoff_blob
+from fx_sig_verify.verify_sigs import auth_data
+from fx_sig_verify.verify_sigs import fingerprint
+from fx_sig_verify.verify_sigs import pecoff_blob
+
+import mardor.mozilla
+from mardor.reader import MarReader
+
+import M2Crypto
+if not auth_data.M2_X509:
+    raise ImportError("M2Crypto not linked correctly")
 
 # Certificate serial numbers we consider valid
 VALID_CERTS = [
@@ -219,6 +227,71 @@ class MozSignedObject(object):
         return do_validation
 
     @trace_xray_subsegment()
+    def check_mar(self):
+        """
+        Determine if the contents of `objf` are a valid Mozilla MAR file
+        signed by one of the correct keys.
+
+        will likely be refactored, but start here
+
+        :returns boolean: True if object has passed all tests.
+
+        :raises SigVerifyException: if any specific problem is identified in
+            the object
+        """
+        objf = self.get_flo()
+        self.show_file_stats(objf)
+        msg = "MAR signature verification not fully tested yet"
+        self.add_message(msg)
+        if self.verbose:
+            print(msg)
+        # Code taken directly from mardor.cli
+        def get_keys(keyfiles, signature_type):
+            builtin_keys = {
+                ('release', 'sha1'): [mardor.mozilla.release1_sha1, mardor.mozilla.release2_sha1],
+                ('release', 'sha384'): [mardor.mozilla.release1_sha384, mardor.mozilla.release2_sha384],
+                ('nightly', 'sha1'): [mardor.mozilla.nightly1_sha1, mardor.mozilla.nightly2_sha1],
+                ('nightly', 'sha384'): [mardor.mozilla.nightly1_sha384, mardor.mozilla.nightly2_sha384],
+                ('dep', 'sha1'): [mardor.mozilla.dep1_sha1, mardor.mozilla.dep2_sha1],
+                ('dep', 'sha384'): [mardor.mozilla.dep1_sha384, mardor.mozilla.dep2_sha384],
+            }
+            keys = []
+            for keyfile in keyfiles:
+                if keyfile.startswith(':mozilla-'):
+                    if signature_type is None:
+                        msg = "No MAR signature found"
+                        self.add_error(msg)
+                        raise SigVerifyBadMarFile("No MAR signature found")
+                    name = keyfile.split(':mozilla-')[1]
+                    try:
+                        keys.extend(builtin_keys[name, signature_type])
+                    except KeyError:
+                        raise ValueError('Invalid internal key name: {}'
+                                         ' or sig type: {}'
+                                        .format(keyfile, signature_type))
+                else:
+                    key = open(keyfile, 'rb').read()
+                    keys.append(key)
+            return keys
+
+        # To start, only check for what ships
+        keyfiles = [
+            ":mozilla-nightly",
+            ":mozilla-release",
+        ]
+
+        with MarReader(objf) as m:
+            keys = get_keys(keyfiles, m.signature_type)
+            valid = any(m.verify(key) for key in keys)
+
+        if not valid:
+            msg = "Failed mar check for keys '{}'".format(repr(keyfiles))
+            self.add_message(msg)
+            if self.verbose:
+                print(msg)
+        return valid
+
+    @trace_xray_subsegment()
     def check_exe(self):
         """
         Determine if the contents of `objf` are a valid Windows executable
@@ -278,10 +351,7 @@ class MozSignedObject(object):
             msg = ("Found {:d} signed datas. Only processing first "
                    "one.".format(len(signed_datas)))
             self.add_message(msg)
-            if self.verbose:
-                print(msg)
-            msg = "Multiple Signatures"
-            raise SigVerifyBadSignature(msg)
+            print(msg)
 
         blob = pecoff_blob.PecoffBlob(signed_data)
 
@@ -300,6 +370,7 @@ class MozSignedObject(object):
                 self.add_error(msg)
             else:
                 msg = 'Asn1Error: {}'.format(str(e))
+                self.add_error(msg)
             raise SigVerifyBadSignature(msg)
 
         # TODO - validate if this is okay for now.
@@ -422,7 +493,10 @@ class MozSignedObjectViaLambda(MozSignedObject):
         valid_sig = True
         try:
             if self.should_validate():
-                valid_sig = self.check_exe()
+                if self.artifact_name.endswith('.mar'):
+                    valid_sig = self.check_mar()
+                else:
+                    valid_sig = self.check_exe()
         except Exception as e:
             valid_sig = False
             if isinstance(e, SigVerifyException):
@@ -520,6 +594,13 @@ class SigVerifyNoSignature(SigVerifyException):
 class SigVerifyBadSignature(SigVerifyException):
     """
     The signature is not valid or not from Mozilla.
+    """
+    pass
+
+
+class SigVerifyBadMarFile(SigVerifyException):
+    """
+    The file doesn't appear to be a signed mar file.
     """
     pass
 

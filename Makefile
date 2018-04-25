@@ -5,10 +5,21 @@
 #
 # All other AWS information is supplied the normal way.
 
-DEV_IMAGE_NAME=fxsv/dev
-BUILD_IMAGE_NAME=fxsv/build
-INSTANCE_NAME=fxsv_latest
-VENV_NAME=venv
+DEV_IMAGE_NAME	:= fxsv/dev
+BUILD_IMAGE_NAME:= fxsv/build
+INSTANCE_NAME	:= fxsv_latest
+VENV_NAME	:= venv
+
+.DEFAULT_GOAL	:= fxsv.zip
+
+help:
+	@echo "Targets:"
+	@echo "    fxsv.zip (default) build zip file in docker container"
+	@echo "    commit   update any files derived from another, prior to committing"
+	@echo "    upload   upload and install zip file as latest lambda version"
+	@echo "    invoke   invoke lambda with content already on S3"
+	@echo "    populate_s3  upload test files to S3"
+	@echo "    help     show this text"
 
 # custom build
 fxsv.zip: Dockerfile.build-environment.built
@@ -16,6 +27,7 @@ fxsv.zip: Dockerfile.build-environment.built
 upload: fxsv.zip
 	@echo "Using AWS credentials for $$AWS_DEFAULT_PROFILE in $$AWS_REGION"
 	aws lambda update-function-code \
+	    --region $${AWS_REGION} \
 	    --function-name hwine_ffsv_dev \
 	    --zip-file fileb://$(PWD)/fxsv.zip \
 
@@ -23,11 +35,26 @@ upload: fxsv.zip
 publish: upload
 	@echo "Using AWS credentials for $$AWS_DEFAULT_PROFILE in $$AWS_REGION"
 	aws lambda publish-version \
+	    --region $${AWS_REGION} \
 	    --function-name hwine_ffsv_dev \
 	    --code-sha-256 "$$(openssl sha1 -binary -sha256 fxsv.zip | base64 | tee /dev/tty)" \
 	    --description "$$(date -u +%Y%m%dT%H%M%S)" \
 
-.PHONY: invoke invoke-no-error invoke-error
+.PHONY: invoke invoke-no-error invoke-error invoke-mar
+invoke-mar:
+	@test -n "$$S3_BUCKET" || ( echo "You must define S3_BUCKET" ; false )
+	@test -n "$$LAMBDA" || ( echo "You must define LAMBDA" ; false )
+	@rm -f invoke_output-mar-no-error.json
+	@echo "Using AWS credentials for $$AWS_DEFAULT_PROFILE in $$AWS_REGION"
+	@echo "Should not return error (but some 'fail')"
+	aws lambda invoke \
+		--region $${AWS_REGION} \
+		--function-name $(LAMBDA) \
+		--payload "$$(sed 's/hwine-ffsv-dev/$(S3_BUCKET)/g' tests/data/S3_event_template-mar-no-error.json)" \
+		invoke_output-mar-no-error.json ; \
+	    if test -s invoke_output-mar-no-error.json; then \
+		jq . invoke_output-mar-no-error.json ; \
+	    fi
 invoke-no-error:
 	@test -n "$$S3_BUCKET" || ( echo "You must define S3_BUCKET" ; false )
 	@test -n "$$LAMBDA" || ( echo "You must define LAMBDA" ; false )
@@ -35,6 +62,7 @@ invoke-no-error:
 	@echo "Using AWS credentials for $$AWS_DEFAULT_PROFILE in $$AWS_REGION"
 	@echo "Should not return error (but some 'fail')"
 	aws lambda invoke \
+		--region $${AWS_REGION} \
 		--function-name $(LAMBDA) \
 		--payload "$$(sed 's/hwine-ffsv-dev/$(S3_BUCKET)/g' tests/data/S3_event_template-no-error.json)" \
 		invoke_output-no-error.json ; \
@@ -49,6 +77,7 @@ invoke-error:
 	@echo "Using AWS credentials for $$AWS_DEFAULT_PROFILE in $$AWS_REGION"
 	@echo "Should return error"
 	aws lambda invoke \
+		--region $${AWS_REGION} \
 		--function-name $(LAMBDA) \
 		--payload "$$(sed 's/hwine-ffsv-dev/$(S3_BUCKET)/g' tests/data/S3_event_template-error.json)" \
 		invoke_output-error.json ; \
@@ -56,7 +85,7 @@ invoke-error:
 		jq . invoke_output-error.json ; \
 	    fi
 
-invoke: invoke-no-error invoke-error
+invoke: invoke-no-error invoke-mar invoke-error
 
 # idea from
 # https://stackoverflow.com/questions/23032580/reinstall-virtualenv-with-tox-when-requirements-txt-or-setup-py-changes#23039826
@@ -69,7 +98,7 @@ tests: .tox/venv.touch
 	mkdir -p $$(dirname $@)
 	touch $@
 
-Dockerfile.dev-environment.built: Dockerfile.dev-environment
+Dockerfile.dev-environment.built: Dockerfile.dev-environment requirements-dev.txt
 	docker build -t $(DEV_IMAGE_NAME) -f $< .
 	docker images $(DEV_IMAGE_NAME) >$@
 	test -s $@ || rm $@
@@ -77,7 +106,7 @@ Dockerfile.dev-environment.built: Dockerfile.dev-environment
 Dockerfile.build-environment: Dockerfile.dev-environment.built $(shell find src -name \*.py)
 	touch $@
 
-Dockerfile.build-environment.built: Dockerfile.build-environment
+Dockerfile.build-environment.built: Dockerfile.build-environment requirements.txt
 	docker build -t $(BUILD_IMAGE_NAME) -f $< .
 	# get rid of anything old
 	docker rm $(INSTANCE_NAME) || true	# okay if fails
@@ -114,7 +143,8 @@ docs: doc_build
 .PHONY:	populate_s3
 populate_s3:
 	@test -n "$$S3_BUCKET" || ( echo "You must define S3_BUCKET" ; false )
-	@echo "Populating s3://$(S3_BUCKET) using current credentials & region"
+	@echo "Populating s3://$(S3_BUCKET) using AWS credentials for $$AWS_DEFAULT_PROFILE in $$AWS_REGION"
+	# authenticode test data
 	aws s3 cp tests/data/32bit_new.exe "s3://$(S3_BUCKET)/32bit new.exe"
 	aws s3 cp tests/data/32bit.exe "s3://$(S3_BUCKET)/32bit.exe"
 	aws s3 cp tests/data/32bit_new.exe "s3://$(S3_BUCKET)/32bit_new.exe"
@@ -123,5 +153,9 @@ populate_s3:
 	aws s3 cp tests/data/bad_2.exe "s3://$(S3_BUCKET)/bad_2.exe"
 	aws s3 cp tests/data/signtool.exe "s3://$(S3_BUCKET)/signtool.exe"
 	aws s3 cp tests/data/32bit.exe "s3://$(S3_BUCKET)/nightly/test/Firefox bogus thingy.exe"
+	# mar test data
+	aws s3 cp tests/data/test-bz2.mar "s3://$(S3_BUCKET)/valid.mar"
+	aws s3 cp tests/data/test-xz.mar "s3://$(S3_BUCKET)/nightly/invalid.mar"
+
 
 	# vim: noet ts=8

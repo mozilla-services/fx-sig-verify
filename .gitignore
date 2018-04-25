@@ -1,3 +1,8 @@
+# Project specific stuff
+logs-*.txt
+logs_*/
+.pytest_cache
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

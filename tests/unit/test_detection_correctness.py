@@ -10,6 +10,8 @@ def successful_invocations():
         "32bit.exe",
         "32bit_new.exe",
         "32bit_sha1.exe",
+        "test-bz2.mar",
+        "PostBalrogStub.exe",
     )
     return map(lambda x: [data_file_path + x], valid_sig_list)
 
@@ -28,11 +30,11 @@ def test_good_signature(successful_invocations):
 def invalid_invocations():
     data_file_path = "tests/data/"
     invalid_sig_list = (
-        "PostBalrogStub.exe",
         "bad_1.exe",
         "bad_2.exe",
         "signtool.exe",
         "vswriter.exe",
+        "test-xz.mar",
     )
     return map(lambda x: [data_file_path + x], invalid_sig_list)
 
