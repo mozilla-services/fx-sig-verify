@@ -1,5 +1,14 @@
 Changelog
 =========
+`0.5.0`__
+-----------------------------------------
+__ https://github.com/mozilla-services/fx-sig-verify/tree/v0.5.0
+
+- Support for validating MAR file signatures.
+
+- More robust build process for M2Crypto (even works on Ubuntu virtual
+  environments)
+
 `0.4.5`__
 -----------------------------------------
 __ https://github.com/mozilla-services/fx-sig-verify/tree/v0.4.5
