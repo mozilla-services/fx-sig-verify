@@ -1,4 +1,5 @@
 from __future__ import print_function
+from __future__ import absolute_import
 from fleece import boto3
 from fleece.xray import (monkey_patch_botocore_for_xray,
                          trace_xray_subsegment)
@@ -12,9 +13,9 @@ import urllib
 import urllib2
 
 import fx_sig_verify
-from verify_sigs import auth_data
-from verify_sigs import fingerprint
-from verify_sigs import pecoff_blob
+from fx_sig_verify.verify_sigs import auth_data
+from fx_sig_verify.verify_sigs import fingerprint
+from fx_sig_verify.verify_sigs import pecoff_blob
 
 import mardor.mozilla
 from mardor.reader import MarReader
