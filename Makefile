@@ -98,7 +98,7 @@ tests: .tox/venv.touch
 	mkdir -p $$(dirname $@)
 	touch $@
 
-Dockerfile.dev-environment.built: Dockerfile.dev-environment
+Dockerfile.dev-environment.built: Dockerfile.dev-environment requirements-dev.txt
 	docker build -t $(DEV_IMAGE_NAME) -f $< .
 	docker images $(DEV_IMAGE_NAME) >$@
 	test -s $@ || rm $@
@@ -106,7 +106,7 @@ Dockerfile.dev-environment.built: Dockerfile.dev-environment
 Dockerfile.build-environment: Dockerfile.dev-environment.built $(shell find src -name \*.py)
 	touch $@
 
-Dockerfile.build-environment.built: Dockerfile.build-environment
+Dockerfile.build-environment.built: Dockerfile.build-environment requirements.txt
 	docker build -t $(BUILD_IMAGE_NAME) -f $< .
 	# get rid of anything old
 	docker rm $(INSTANCE_NAME) || true	# okay if fails
@@ -143,7 +143,8 @@ docs: doc_build
 .PHONY:	populate_s3
 populate_s3:
 	@test -n "$$S3_BUCKET" || ( echo "You must define S3_BUCKET" ; false )
-	@echo "Populating s3://$(S3_BUCKET) using current credentials & region"
+	@echo "Populating s3://$(S3_BUCKET) using AWS credentials for $$AWS_DEFAULT_PROFILE in $$AWS_REGION"
+	# authenticode test data
 	aws s3 cp tests/data/32bit_new.exe "s3://$(S3_BUCKET)/32bit new.exe"
 	aws s3 cp tests/data/32bit.exe "s3://$(S3_BUCKET)/32bit.exe"
 	aws s3 cp tests/data/32bit_new.exe "s3://$(S3_BUCKET)/32bit_new.exe"
@@ -152,24 +153,6 @@ populate_s3:
 	aws s3 cp tests/data/bad_2.exe "s3://$(S3_BUCKET)/bad_2.exe"
 	aws s3 cp tests/data/signtool.exe "s3://$(S3_BUCKET)/signtool.exe"
 	aws s3 cp tests/data/32bit.exe "s3://$(S3_BUCKET)/nightly/test/Firefox bogus thingy.exe"
-
-# support for generated files
-UPDATE_BEFORE_COMMIT_FILES := requirements.txt requirements-dev.txt Pipfile.lock
-
-# make pipenv easier
-Pipfile.lock: Pipfile
-	pipenv lock
-requirements.txt: Pipfile.lock
-	pipenv lock --requirements >$@
-requirements-dev.txt: Pipfile.lock
-	pipenv lock --requirements --dev >$@
-
-.PHONY:  commit help _clean_commit _clean_validate
-
-_clean_commit:
-	rm -f $(UPDATE_BEFORE_COMMIT_FILES)
-
-commit: _clean_commit $(UPDATE_BEFORE_COMMIT_FILES)
 	# mar test data
 	aws s3 cp tests/data/test-bz2.mar "s3://$(S3_BUCKET)/valid.mar"
 	aws s3 cp tests/data/test-xz.mar "s3://$(S3_BUCKET)/nightly/invalid.mar"

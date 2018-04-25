@@ -1,7 +1,10 @@
-git+https://gitlab.com/m2crypto/m2crypto.git@0.29.0#egg=M2Crypto
+git+https://gitlab.com/m2crypto/m2crypto.git@0.26.0#egg=M2Crypto
+mar==2.2.3
+backports.lzma==0.0.10 ; python_version < "3.3"
 boto3==1.7.4
 botocore==1.10.4
 certifi==2018.4.16
+cffi==1.11.5; platform_python_implementation != 'pypy'
 chardet==3.0.4
 docutils==0.14
 fleece==0.15.1

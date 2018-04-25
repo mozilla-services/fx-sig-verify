@@ -20,6 +20,10 @@ from fx_sig_verify.verify_sigs import pecoff_blob
 import mardor.mozilla
 from mardor.reader import MarReader
 
+import M2Crypto
+if not auth_data.M2_X509:
+    raise ImportError("M2Crypto not linked correctly")
+
 # Certificate serial numbers we consider valid
 VALID_CERTS = [
     16384756435581673599510349952793916302L,  # new cert bug 1366012
@@ -238,6 +242,9 @@ class MozSignedObject(object):
         objf = self.get_flo()
         self.show_file_stats(objf)
         msg = "MAR signature verification not fully tested yet"
+        self.add_message(msg)
+        if self.verbose:
+            print(msg)
         # Code taken directly from mardor.cli
         def get_keys(keyfiles, signature_type):
             builtin_keys = {
@@ -273,14 +280,15 @@ class MozSignedObject(object):
             ":mozilla-release",
         ]
 
-
         with MarReader(objf) as m:
             keys = get_keys(keyfiles, m.signature_type)
             valid = any(m.verify(key) for key in keys)
 
-        self.add_message(msg)
-        if self.verbose:
-            print(msg)
+        if not valid:
+            msg = "Failed mar check for keys '{}'".format(repr(keyfiles))
+            self.add_message(msg)
+            if self.verbose:
+                print(msg)
         return valid
 
     @trace_xray_subsegment()
@@ -485,7 +493,10 @@ class MozSignedObjectViaLambda(MozSignedObject):
         valid_sig = True
         try:
             if self.should_validate():
-                valid_sig = self.check_exe()
+                if self.artifact_name.endswith('.mar'):
+                    valid_sig = self.check_mar()
+                else:
+                    valid_sig = self.check_exe()
         except Exception as e:
             valid_sig = False
             if isinstance(e, SigVerifyException):
