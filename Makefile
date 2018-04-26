@@ -10,6 +10,8 @@ BUILD_IMAGE_NAME:= fxsv/build
 INSTANCE_NAME	:= fxsv_latest
 VENV_NAME	:= venv
 
+DOCKER_BUILD_OPTIONS  :=
+
 .DEFAULT_GOAL	:= fxsv.zip
 
 help:
@@ -23,6 +25,14 @@ help:
 
 # custom build
 fxsv.zip: Dockerfile.build-environment.built
+	docker cp $(INSTANCE_NAME):/tmp/fxsv.zip .
+	# docker's host (VM) likely to have wrong time (on macOS). Update it
+	touch fxsv.zip
+
+.PHONY: commit
+commit:
+	rm -f Docker*built fxsv.zip
+	$(MAKE) DOCKER_BUILD_OPTIONS=--no-cache fxsv.zip
 
 upload: fxsv.zip
 	@echo "Using AWS credentials for $$AWS_DEFAULT_PROFILE in $$AWS_REGION"
@@ -99,7 +109,7 @@ tests: .tox/venv.touch
 	touch $@
 
 Dockerfile.dev-environment.built: Dockerfile.dev-environment requirements-dev.txt
-	docker build -t $(DEV_IMAGE_NAME) -f $< .
+	docker build $(DOCKER_BUILD_OPTIONS) -t $(DEV_IMAGE_NAME) -f $< .
 	docker images $(DEV_IMAGE_NAME) >$@
 	test -s $@ || rm $@
 
@@ -107,16 +117,13 @@ Dockerfile.build-environment: Dockerfile.dev-environment.built $(shell find src 
 	touch $@
 
 Dockerfile.build-environment.built: Dockerfile.build-environment requirements.txt
-	docker build -t $(BUILD_IMAGE_NAME) -f $< .
+	docker build $(DOCKER_BUILD_OPTIONS) -t $(BUILD_IMAGE_NAME) -f $< .
 	# get rid of anything old
 	docker rm $(INSTANCE_NAME) || true	# okay if fails
 	# retrieve the zip file
 	docker run --name $(INSTANCE_NAME) $(BUILD_IMAGE_NAME)
 	# delete old version, if any
 	rm -f fxsv.zip
-	docker cp $(INSTANCE_NAME):/tmp/fxsv.zip .
-	# docker's host (VM) likely to have wrong time (on macOS). Update it
-	touch fxsv.zip
 	docker ps -qa --filter name=$(INSTANCE_NAME) >$@
 	test -s $@ || rm $@
 
