@@ -42,13 +42,15 @@ PERF_OUTPUT = """
 
 JSON_OUTPUT = """
 {pass:8,d} passed
-        {SkipFileSuffix:10,d} non .exe skipped
-        {SkipFilePrefix:10,d} non-firefox .exe skipped
+        {SkipFileSuffix:10,d} non .exe or .mar skipped
+        {SkipFilePrefix:10,d} non-firefox .exe or mar skipped
         {SkipKeyPrefix:10,d} non shippable skipped
+        {SkipMar:10,d} MAR files skipped (transition)
         {FilesChecked:10,d} signatures examined
 {SigVerifyNoSignature:10,d} exe without signature
 {SigVerifyBadSignature:10,d} exe with bad signature
 {SigVerifyNonMozSignature:10,d} exe with non-Mozilla signature
+{SigVerifyBadMarFile:10,d} mar with bad signature
         {S3RetrievalFailure:10,d} that couldn't be retrieved from S3
         {S3UnquoteRetry:10,d} that were retried after unquoting
         {S3UnquoteSuccess:10,d} that then succeeded
@@ -65,10 +67,12 @@ JSON_OUTPUT_KEYS = (
     "SkipFileSuffix",
     "SkipFilePrefix",
     "SkipKeyPrefix",
+    "SkipMar",
     "FilesChecked",
     "SigVerifyNoSignature",
     "SigVerifyBadSignature",
     "SigVerifyNonMozSignature",
+    "SigVerifyBadMarFile",
     "S3RetrievalFailure",
     "S3UnquoteRetry",
     "S3UnquoteSuccess",
@@ -168,6 +172,9 @@ class JsonSummerizer(Summerizer):
                          endswith(reasons, 'SigVerifyBadSignature'),
                          "SigVerifyBadSignature")
                     incr(counts,
+                         endswith(reasons, 'SigVerifyBadMarFile'),
+                         "SigVerifyBadMarFile")
+                    incr(counts,
                          isin(reasons, 'failed to process s3 object'),
                          "S3RetrievalFailure")
                     incr(counts,
@@ -185,6 +192,10 @@ class JsonSummerizer(Summerizer):
                     incr(counts,
                          isin(reasons, 'Excluded from validation by key prefix'),
                          "SkipKeyPrefix")
+                    incr(counts,
+                         isin(reasons, 'Excluded')
+                         and check['key'].endswith('.mar'),
+                         "SkipMar")
                 except IndexError:
                     pass
         # compute files examined for signature compliance

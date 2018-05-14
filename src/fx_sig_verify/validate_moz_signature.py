@@ -35,15 +35,16 @@ VALID_CERTS = [
 # handled by the S3 invoking function, but now other consumers want more
 # extensions, so we filter here. See
 # https://github.com/mozilla-services/fx-sig-verify/issues/29
-PRODUCTION_EXTENSIONS = (
-    '.exe',
-)
+PRODUCTION_EXTENSIONS = {
+    '.exe': 'Authenticode',
+    '.mar': 'Mozilla ARchive',
+}
 
 # The installers are consistently named. Anything else (as of this writing) is
 # some internal tooling that is not distributed to end users.
 PRODUCTION_PREFIXES = (
     "Firefox",      # used for Beta & GA releases
-    "firefox",      # used for nightly & dep builds
+    "firefox",      # used for all mar files, and nightly + dep builds
 )
 
 # Now that we are handed _all_ the uploads, we do not want to examine try & dep
@@ -95,6 +96,13 @@ class MozSignedObject(object):
     verbose = 0
     production_criteria = True
 
+    # Where reports of each type should be sent
+    SNS_CHANNEL = {
+        None: 'SNSARN',
+        '.exe': 'SNSARN',
+        '.mar': 'SNSARN',
+    }
+
     @classmethod
     def set_production_criteria(cls, production_override=None):
         # reset - testing issue, not production, as new class isn't created
@@ -131,6 +139,7 @@ class MozSignedObject(object):
         self.object_status = None
         self.errors = []
         self.messages = []
+        self.signature_type = None
         if args or kwargs:
             raise TypeError("unexpected args")
 
@@ -190,6 +199,23 @@ class MozSignedObject(object):
             objf.seek(0, 0)
             print("Processing file of size {} (at {})".format(len_, cur_pos))
 
+    def get_extension(self, path):
+        try:
+            basename = path if path else os.path.basename(self.artifact_name)
+            extension = basename[basename.rindex('.'):]
+        except ValueError:
+            # no substring, not fatal
+            extension = None
+            pass
+        return extension
+
+    def set_signature_type(self):
+        if self.signature_type is None:
+            basename = os.path.basename(self.artifact_name)
+            extension = self.get_extension(basename)
+            if extension in PRODUCTION_EXTENSIONS:
+                self.signature_type = extension
+
     def should_validate(self):
         """
         Filter out any items that should not be checked. Decision is made on
@@ -197,6 +223,7 @@ class MozSignedObject(object):
         """
         if not self.production_criteria:
             # We're in test mode, process everything
+            self.set_signature_type()
             return True
 
         # We have 2 criteria for filtering - file extension and file prefix. In
@@ -208,8 +235,9 @@ class MozSignedObject(object):
         # exceptions (mar.exe & mbsdiff.exe) to reduce false positives (since a
         # invalid exe will page someone).
         basename = os.path.basename(self.artifact_name)
+        extension = self.get_extension(basename)
         do_validation = True
-        if not basename.endswith(PRODUCTION_EXTENSIONS):
+        if not extension in PRODUCTION_EXTENSIONS:
             self.add_message("Excluded from validation by file suffix")
             do_validation = False
         elif not basename.startswith(PRODUCTION_PREFIXES):
@@ -224,6 +252,8 @@ class MozSignedObject(object):
             if key.startswith(PRODUCTION_KEY_PREFIX_EXCLUSIONS):
                 self.add_message("Excluded from validation by key prefix")
                 do_validation = False
+        if do_validation:
+            self.set_signature_type()
         return do_validation
 
     @trace_xray_subsegment()
@@ -413,6 +443,20 @@ class MozSignedObjectViaLambda(MozSignedObject):
         # just the failing object. Any problem this might cause will be
         # reported by the analyze_cloudwatch script.
 
+    def get_topic_arn(self, sig_type):
+        topic_arn = self.sig_arns(sig_type).topic_arn
+        if not topic_arn:
+            env_var = self.sig_arns(sig_type).env_var_name
+            topic_arn = os.environ.get(env_var, "")
+            self.sig_arns(sig_type).topic_arn = topic_arn
+            if not topic_arn:
+                # bad config, we expected this in the environ
+                # set bad value so we don't re-raise
+                self.sig_arns(sig_type).topic_arn = "no-topic-arn"
+                raise KeyError("Missing '{}' from environment"
+                               .format(env_var_name))
+        return topic_arn
+
     def get_location(self):
         "For S3, we need the bucket & key names"
         return self.bucket_name, self.key_name
@@ -535,15 +579,12 @@ class MozSignedObjectViaLambda(MozSignedObject):
             msg += traceback.format_exc()
         client = boto3.client("sns")
         # keep a global to prevent infinite recursion on arn error
-        global topic_arn
-        topic_arn = os.environ.get('SNSARN', "")
+
+        topic_arn = self.get_topic_arn(self.signature_type)
+        if not topic_arn:
+            raise ValueError('bad topic_arn')
         if self.verbose:
             print("snsarn: {}".format(topic_arn))
-        if not topic_arn:
-            # bad config, we expected this in the environ
-            # set flag so we don't re-raise
-            topic_arn = "no-topic-arn"
-            raise KeyError("Missing 'SNSARN' from environment")
         try:
             # if the publish fails, we still want to continue, so we get the
             # details into the cloud watch logs. Otherwise, this can
@@ -558,6 +599,17 @@ class MozSignedObjectViaLambda(MozSignedObject):
                              "exception: '{}'"
                              "".format(len(msg), str(msg), len(subject),
                                        str(subject), str(e)))
+
+    def get_topic_arn(self, sig_type):
+        env_var_name = self.SNS_CHANNEL[sig_type]
+        topic_arn = os.environ.get(env_var_name, "")
+        if not topic_arn:
+            # bad config, we expected this in the environ
+            # set flag so we don't re-raise
+            topic_arn = "no-topic-arn"
+            raise KeyError("Missing '{}' from environment"
+                           .format(topic_arn))
+        return topic_arn
 
 
 class SigVerifyException(Exception):

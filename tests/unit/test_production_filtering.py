@@ -85,9 +85,13 @@ def test_no_exclude_production(set_production_true, fname, key):
     # Given that PRODUCTION is missing or true
     set_production_true()
     # WHEN a good file is processed, using any valid key
-    u.upload_file(bucket, fname, key)
-    event = u.build_event(bucket.name, key)
+    # now that we process 2 types, key extension must match file extension
+    # since these are all good combos, we assume extension is last 3 chars
+    newkey = key[:-3] + fname[-3:]
+    u.upload_file(bucket, fname, newkey)
+    event = u.build_event(bucket.name, newkey)
     response = lambda_handler(event, u.dummy_context)
+    print(fname, key, newkey)
     #  print("response:", response)
     # THEN it should pass & not be marked as excluded
     assert "pass" in response['results'][0]['status']

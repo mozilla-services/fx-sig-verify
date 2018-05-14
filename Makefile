@@ -150,19 +150,20 @@ docs: doc_build
 .PHONY:	populate_s3
 populate_s3:
 	@test -n "$$S3_BUCKET" || ( echo "You must define S3_BUCKET" ; false )
-	@echo "Populating s3://$(S3_BUCKET) using AWS credentials for $$AWS_DEFAULT_PROFILE in $$AWS_REGION"
+	@echo "Populating s3://$(S3_BUCKET)$(key_prefix) using AWS credentials for $$AWS_DEFAULT_PROFILE in $$AWS_REGION"
 	# authenticode test data
-	aws s3 cp tests/data/32bit_new.exe "s3://$(S3_BUCKET)/32bit new.exe"
-	aws s3 cp tests/data/32bit.exe "s3://$(S3_BUCKET)/32bit.exe"
-	aws s3 cp tests/data/32bit_new.exe "s3://$(S3_BUCKET)/32bit_new.exe"
-	aws s3 cp tests/data/32bit_new.exe "s3://$(S3_BUCKET)/32bit+new.exe"
-	aws s3 cp tests/data/32bit_sha1.exe "s3://$(S3_BUCKET)/32bit_sha1.exe"
-	aws s3 cp tests/data/bad_2.exe "s3://$(S3_BUCKET)/bad_2.exe"
-	aws s3 cp tests/data/signtool.exe "s3://$(S3_BUCKET)/signtool.exe"
-	aws s3 cp tests/data/32bit.exe "s3://$(S3_BUCKET)/nightly/test/Firefox bogus thingy.exe"
+	aws s3 cp tests/data/32bit_new.exe "s3://$(S3_BUCKET)$(key_prefix)/32bit new.exe"
+	aws s3 cp tests/data/32bit.exe "s3://$(S3_BUCKET)$(key_prefix)/32bit.exe"
+	aws s3 cp tests/data/32bit_new.exe "s3://$(S3_BUCKET)$(key_prefix)/32bit_new.exe"
+	aws s3 cp tests/data/32bit_new.exe "s3://$(S3_BUCKET)$(key_prefix)/32bit+new.exe"
+	aws s3 cp tests/data/32bit_sha1.exe "s3://$(S3_BUCKET)$(key_prefix)/32bit_sha1.exe"
+	aws s3 cp tests/data/bad_2.exe "s3://$(S3_BUCKET)$(key_prefix)/bad_2.exe"
+	aws s3 cp tests/data/signtool.exe "s3://$(S3_BUCKET)$(key_prefix)/signtool.exe"
+	aws s3 cp tests/data/32bit.exe "s3://$(S3_BUCKET)$(key_prefix)/nightly/test/Firefox bogus thingy.exe"
 	# mar test data
-	aws s3 cp tests/data/test-bz2.mar "s3://$(S3_BUCKET)/valid.mar"
-	aws s3 cp tests/data/test-xz.mar "s3://$(S3_BUCKET)/nightly/invalid.mar"
+	aws s3 cp tests/data/test-bz2.mar "s3://$(S3_BUCKET)$(key_prefix)/valid.mar"
+	aws s3 cp tests/data/test-bz2.mar "s3://$(S3_BUCKET)$(key_prefix)/nightly/firefox-60esr.mar"
+	aws s3 cp tests/data/test-xz.mar "s3://$(S3_BUCKET)$(key_prefix)/nightly/invalid.mar"
 
 
 	# vim: noet ts=8

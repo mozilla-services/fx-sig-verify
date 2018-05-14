@@ -53,9 +53,10 @@ def build_event(bucket, key):
     return {'Records': [record, ]}
 
 
+# Bad key names are file names that should be ignored in production solely
+# based on their name
 bad_key_names_list = [
     'bad_1.exe',
-    'bad_1.mar',
     "Firefox",
     "firefox",
 ]
@@ -64,9 +65,11 @@ good_key_names_list = [
     "Firefox.exe",
     "Firefox sadf asfsd.exe",
     "firefox.exe",
+    'firefox-complete.mar',
     "firefox-asdjsll.exe",
     "nightly/fred/firefox-asdkjds.exe",
     "release/sam/Firefox asdfe sss.exe",
+    'release/sam/firefox-complete.mar',
 ]
 
 
