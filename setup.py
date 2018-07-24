@@ -24,7 +24,7 @@ def read(*names, **kwargs):
 
 setup(
     name='fx_sig_verify',
-    version='0.4.6',
+    version='0.4.7',
     license='MPL',
     description='AWS Lambda to check code signatures.',
     long_description='%s\n%s' % (
