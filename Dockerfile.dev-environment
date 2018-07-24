@@ -4,7 +4,8 @@ WORKDIR /usr/src/app
 
 # get the tools we need
 RUN yum install -y python27-devel python27-pip gcc openssl-devel zip findutils git
-RUN pip install --disable-pip-version-check --upgrade pip setuptools
+# pip 10 doesn't uninstall chardet, which we need upgraded
+RUN pip install --disable-pip-version-check --upgrade "pip<10" setuptools
 
 # Dev requirements
 COPY requirements-dev.txt ./

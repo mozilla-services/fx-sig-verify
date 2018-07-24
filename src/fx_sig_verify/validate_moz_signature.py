@@ -47,7 +47,9 @@ PRODUCTION_KEY_PREFIX_EXCLUSIONS = (
 
 
 # We will reject any file larger than this to avoid DoS.
-MAX_EXE_SIZE = 100 * (1024 * 1024)  # 100MiB
+# should not exceed "signcode_maxsize" in RelEng's file:
+#   https://github.com/mozilla-releng/build-puppet/blob/master/modules/signingserver/manifests/instance.pp#L16
+MAX_EXE_SIZE = 350 * (1024 * 1024)
 
 # by default wrap all boto calls with x-ray
 monkey_patch_botocore_for_xray()
