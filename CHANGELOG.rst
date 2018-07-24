@@ -1,8 +1,16 @@
 Changelog
 =========
+`0.4.7`__
+-----------------------------------------
+__ https://github.com/mozilla-services/fx-sig-verify/tree/v0.4.7
+
+- Fix broken tests
+
 `0.4.6`__
 -----------------------------------------
 __ https://github.com/mozilla-services/fx-sig-verify/tree/v0.4.6
+
+- NEVER DEPLOYED
 
 - Bump max binary size to accept ASAN builds (issue 46)
 
