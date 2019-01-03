@@ -1,7 +1,6 @@
 [paths]
 source =
    src/fx_sig_verify
-   */site-packages/fx_sig_verify
 
 [run]
 branch = true
