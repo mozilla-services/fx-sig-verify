@@ -22,10 +22,6 @@ install:
   - easy_install --version
   - pip --version
   - tox --version
-  - env
-  - ls -l /etc/boto.cfg || true
-  - test -r /etc/boto.cfg && cat /etc/boto.cfg
-  - echo "config '$BOTO_CONFIG' path '$BOTO_PATH'"
 script:
   - tox -v
 after_failure:
