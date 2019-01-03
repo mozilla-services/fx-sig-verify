@@ -7,10 +7,10 @@ env:
     - SEGFAULT_SIGNALS=all
   matrix:
     - TOXENV=check
-    - TOXENV=docs
+      # - TOXENV=docs
 
       # - TOXENV=py27,report,coveralls,codecov
-    - TOXENV=py27,report,codecov
+      #- TOXENV=py27,report,codecov
 
 before_install:
   - python --version
@@ -24,8 +24,8 @@ install:
   - tox --version
   - env
   - ls -l /etc/boto.cfg || true
-  - echo "config :$BOTO_CONFIG: path :$BOTO_PATH:"
   - test -r /etc/boto.cfg && cat /etc/boto.cfg
+  - echo "config '$BOTO_CONFIG' path '$BOTO_PATH'"
 script:
   - tox -v
 after_failure:
