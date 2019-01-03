@@ -8,10 +8,10 @@ env:
     - BOTO_CONFIG=/dev/null
   matrix:
     - TOXENV=check
-      # - TOXENV=docs
+    - TOXENV=docs
 
       # - TOXENV=py27,report,coveralls,codecov
-      #- TOXENV=py27,report,codecov
+    - TOXENV=py27,report,codecov
 
 before_install:
   - python --version
