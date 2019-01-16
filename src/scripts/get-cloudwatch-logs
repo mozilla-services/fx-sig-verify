@@ -51,6 +51,7 @@ DATE=$(which gdate || which date)
 now="$($DATE --utc --iso-8601=minutes)"
 END_TIME="${END_TIME:-$now}"
 new_logs="logs-${END_TIME}.txt"
+echo "    and end time of $END_TIME"
 
 awslogs get \
     --aws-region "$AWS_REGION" \
