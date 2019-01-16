@@ -41,7 +41,7 @@ PERF_OUTPUT = """
 """.strip()
 
 JSON_OUTPUT = """
-{pass:6,d} passed
+{pass:8,d} passed
         {Excluded:10,d} exe's not validated
 {SigVerifyNoSignature:10,d} exe without signature
 {SigVerifyBadSignature:10,d} exe with bad signature
@@ -51,10 +51,10 @@ JSON_OUTPUT = """
         {S3UnquoteSuccess:10,d} that then succeeded
 {other:10,d} other failures
        ---
-{fail:6,d} total failed
-------
-{total:6,d} processed
-======
+{fail:8,d} total failed
+--------
+{total:8,d} processed
+========
 """.strip()
 #  need the keys, as when rendered, no default values
 JSON_OUTPUT_KEYS = (
@@ -230,7 +230,7 @@ class MetricSummerizer(Summerizer):
         self.counts["max_used_memory"] = max(float(match.group('mem_used')),
                                              self.counts["max_used_memory"])
         self.counts["total_memory"] += float(match.group('mem_used'))
-        self.counts["total_allocated_memory"] += \
+        self.counts["total_allocated_memory"] = \
             float(match.group('mem_allocated'))
         if match.group('mem_allocated') == match.group('mem_used'):
             self.counts["max_memory_invocations"] += 1
