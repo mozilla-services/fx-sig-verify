@@ -1,5 +1,14 @@
 Changelog
 =========
+`0.4.8`__
+-----------------------------------------
+__ https://github.com/mozilla-services/fx-sig-verify/tree/v0.4.8
+
+- Bump max binary size (issue GH-54)
+
+- Updated Dockerfile for development to be compatible with current Amazon Linux
+  image.
+
 `0.4.7`__
 -----------------------------------------
 __ https://github.com/mozilla-services/fx-sig-verify/tree/v0.4.7
