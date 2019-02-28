@@ -13,6 +13,19 @@ VENV_NAME=venv
 # custom build
 fxsv.zip: Dockerfile.build-environment.built
 
+
+.PHONY: help
+help:
+	@echo "fxsv.zip	DEFAULT target - build lambda package"
+	@echo "help		this list"
+	@echo "upload		upload lambda function to AWS"
+	@echo "publish		publish lambda function on AWS"
+	@echo "invoke		execute test cases on AWS"
+	@echo "tests		execute tests locally via tox"
+	@echo "populate_s3	upload test data to S3"
+
+
+
 upload: fxsv.zip
 	@echo "Using AWS credentials for $$AWS_DEFAULT_PROFILE in $$AWS_REGION"
 	aws lambda update-function-code \
