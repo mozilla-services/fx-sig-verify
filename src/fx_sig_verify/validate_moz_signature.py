@@ -18,9 +18,9 @@ from verify_sigs import pecoff_blob
 
 # Certificate serial numbers we consider valid
 VALID_CERTS = [
-    16384756435581673599510349952793916302L,  # new cert bug 1366012
-    13159122772063869363917814975931229904L,  # just one cert for all channels
-    17509195172714594371847083187584920039L,  # sha1 cert used for XP on esr
+    16384756435581673599510349952793916302,  # new cert bug 1366012
+    13159122772063869363917814975931229904,  # just one cert for all channels
+    17509195172714594371847083187584920039,  # sha1 cert used for XP on esr
 ]
 
 # We only want certain extensions handled in production. Originally that was
@@ -50,8 +50,10 @@ PRODUCTION_KEY_PREFIX_EXCLUSIONS = (
 # should not exceed "signcode_maxsize" in RelEng's file:
 #   https://github.com/mozilla-releng/build-puppet/blob/master/modules/signingserver/manifests/instance.pp#L16
 # bump per:
-#   https://github.com/mozilla-releng/build-puppet/commit/e14e5e90edc0372f8366912c7806818334de83f6
-MAX_EXE_SIZE = 378 * (1024 * 1024)
+#   https://github.com/mozilla-releng/build-puppet/pull/410/commits/1a15f279cecc5ed765de7e0327fefe80507f8806
+# (while we don't process DLLs at present, we don't want to get caught off
+# guard)
+MAX_EXE_SIZE = 400 * (1024 * 1024)
 
 # by default wrap all boto calls with x-ray
 monkey_patch_botocore_for_xray()
