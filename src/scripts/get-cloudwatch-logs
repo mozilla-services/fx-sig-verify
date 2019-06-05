@@ -53,6 +53,14 @@ END_TIME="${END_TIME:-$now}"
 new_logs="logs-${END_TIME}.txt"
 echo "    and end time of $END_TIME"
 
+show_times () {
+    local start=$now
+    local now="$($DATE --utc --iso-8601=minutes)"
+    warn "Ran from $start to $now"
+}
+
+trap show_times EXIT
+
 awslogs get \
     --aws-region "$AWS_REGION" \
     --start "$START_TIME" \
