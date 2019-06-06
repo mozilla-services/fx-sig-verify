@@ -1,0 +1,102 @@
+#/usr/bin/env bash
+# vim: set et sts=4 ft=sh :
+
+USAGE="usage: ${0##*/} [options] arg...
+Download an S3 object and verify locally
+
+Intended to be used to diagnose alert messages
+
+Options:
+    -h|--help	    output this help
+"
+
+set -eu
+
+warn() { for m; do echo "$m"; done 1>&2 ; }
+die() { warn "$@" ; exit 2; }
+usage() { warn "$@" "${USAGE:-}" ; [[ $# == 0 ]] && exit 0 || exit 1;}
+
+# Parse options
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+	-h|--help) usage ;;
+	-*) usage "Unknown option '$1'" ;;
+	*) break ;;
+    esac
+    shift
+done
+
+find_sig_verify() {
+    t=$(type -t fx-sig-verify || true)
+    case $(type -t fx-sig-verify || true) in
+	function) app=fx-sig-verify ;;
+	file) app=$(type -p fx-sig-verify) ;;
+	*) die "Can't use fx-sig-verify of type 't'" ;;
+    esac
+    [[ -n "$app" ]] || die "Can't find fx-sig-verify"
+    echo "$app"
+}
+
+
+# Now have non-option args
+test $# -gt 0 || usage "Missing args"
+
+SIG_VERIFY=$(find_sig_verify)
+
+cleanup_temp_files() {
+    if [[ -n "$tmpDir" ]]; then
+	warn "Used temp directory '$tmpDir'"
+	# more stuff later
+    fi
+}
+
+trap cleanup_temp_files EXIT
+
+tmpDir=$(mktemp -d "/tmp/${0##*/}.$USER.XXXXXX")
+
+s3_2_http() {
+    local s3_url="$1"
+    local http_url=""
+    local -r s3_prefix='s3://net-mozaws-prod-delivery-firefox'
+    local -r archive_prefix='https://archive.mozilla.org'
+    local http_path="${s3_url#$s3_prefix}"
+    if [[ $http_path != $s3_url ]]; then
+	http_url="$archive_prefix$http_path"
+    fi
+    echo "$http_url"
+}
+
+
+get_s3_object() {
+    local url="$1"
+    local http_url=$(s3_2_http $url)
+    if [[ -n $http_url ]]; then
+	wget -P $tmpDir "$http_url"
+    else
+	# try via direct s3 - assumes creds in environment
+	aws s3 cp "$url" $tmpDir
+    fi
+    echo -n "$tmpDir/"
+    ls -t $tmpDir | head -1
+}
+
+verify_artifact() {
+    local artifact="$1"
+    local ec=0
+    if [[ -r "$artifact" ]]; then
+	$SIG_VERIFY "$artifact" || ec=$?
+	if [[ $ec != 0 ]]; then
+	    echo -e "Extracting existing certs:\n"
+	    print-pe-certs "$artifact" > /dev/tty
+	fi
+    else
+	die "Can't read '$artifact'"
+    fi
+    return $ec
+}
+
+for url ; do
+    artifact=$(get_s3_object $url)
+    echo "retrieved $artifact"
+    result_code=$(verify_artifact "$artifact")
+done
