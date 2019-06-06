@@ -18,6 +18,7 @@ from verify_sigs import pecoff_blob
 
 # Certificate serial numbers we consider valid
 VALID_CERTS = [
+    14785325618211854949562096782187497067,  # new cert bug 1554767
     16384756435581673599510349952793916302,  # new cert bug 1366012
     13159122772063869363917814975931229904,  # just one cert for all channels
     17509195172714594371847083187584920039,  # sha1 cert used for XP on esr
