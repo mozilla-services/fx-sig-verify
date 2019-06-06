@@ -10,6 +10,7 @@ def successful_invocations():
         "32bit.exe",
         "32bit_new.exe",
         "32bit_sha1.exe",
+        "2019-06-64bit.exe",
     )
     return map(lambda x: [data_file_path + x], valid_sig_list)
 
