@@ -76,7 +76,8 @@ bad_file_names_list = ['bad_1.exe', ]
 good_file_names_list = [
     '32bit.exe',  # signed with older valid key
     '32bit_new.exe',  # signed with current valid key
-            ]
+    '2019-06-64bit.exe', # cert valid since bug 1554767
+]
 
 
 def delete_verbose():
