@@ -91,6 +91,7 @@ setup(
     scripts=[
         "src/scripts/get-cloudwatch-logs",
         "src/scripts/re-invoke-dirtree",
+        "src/scripts/get-and-test-s3-url",
     ],
     dependency_links=[
         ],
