@@ -1,5 +1,15 @@
 Changelog
 =========
+`0.4.9`__
+-----------------------------------------
+__ https://github.com/mozilla-services/fx-sig-verify/tree/v0.4.9
+
+- Update for new Authenticode certificate `bug 1554767`__
+
+- Updated functional AWS testing to work with newer clock skew windows.
+
+__ https://bugzilla.mozilla.org/show_bug.cgi?id=1554767
+
 `0.4.8`__
 -----------------------------------------
 __ https://github.com/mozilla-services/fx-sig-verify/tree/v0.4.8

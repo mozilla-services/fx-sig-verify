@@ -24,7 +24,7 @@ def read(*names, **kwargs):
 
 setup(
     name='fx_sig_verify',
-    version='0.4.8',
+    version='0.4.9',
     license='MPL',
     description='AWS Lambda to check code signatures.',
     long_description='%s\n%s' % (
@@ -91,6 +91,7 @@ setup(
     scripts=[
         "src/scripts/get-cloudwatch-logs",
         "src/scripts/re-invoke-dirtree",
+        "src/scripts/get-and-test-s3-url",
     ],
     dependency_links=[
         ],

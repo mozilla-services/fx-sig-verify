@@ -52,7 +52,9 @@ invoke-no-error:
 	aws lambda invoke \
 		--region $${AWS_REGION} \
 		--function-name $(LAMBDA) \
-		--payload "$$(sed 's/hwine-ffsv-dev/$(S3_BUCKET)/g' tests/data/S3_event_template-no-error.json)" \
+		--payload "$$(sed -e 's/hwine-ffsv-dev/$(S3_BUCKET)/g' \
+		                  -e 's/1970-01-01T00:00:00/$$(date +%Y-%m-%dT%H:%M:%S)/g' \
+				  tests/data/S3_event_template-no-error.json)" \
 		invoke_output-no-error.json ; \
 	    if test -s invoke_output-no-error.json; then \
 		jq . invoke_output-no-error.json ; \
@@ -67,7 +69,9 @@ invoke-error:
 	aws lambda invoke \
 		--region $${AWS_REGION} \
 		--function-name $(LAMBDA) \
-		--payload "$$(sed 's/hwine-ffsv-dev/$(S3_BUCKET)/g' tests/data/S3_event_template-error.json)" \
+		--payload "$$(sed -e 's/hwine-ffsv-dev/$(S3_BUCKET)/g' \
+		                  -e 's/1970-01-01T00:00:00/$$(date +%Y-%m-%dT%H:%M:%S)/g' \
+				  tests/data/S3_event_template-error.json)" \
 		invoke_output-error.json ; \
 	    if test -s invoke_output-error.json; then \
 		jq . invoke_output-error.json ; \
@@ -126,5 +130,6 @@ populate_s3:
 	aws s3 cp tests/data/bad_2.exe "s3://$(S3_BUCKET)/bad_2.exe"
 	aws s3 cp tests/data/signtool.exe "s3://$(S3_BUCKET)/signtool.exe"
 	aws s3 cp tests/data/32bit.exe "s3://$(S3_BUCKET)/nightly/test/Firefox bogus thingy.exe"
+	aws s3 cp tests/data/2019-06-64bit.exe "s3://$(S3_BUCKET)/2019-06-64bit.exe"
 
-	# vim: noet ts=8
+# vim: noet ts=8
