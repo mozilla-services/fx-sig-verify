@@ -30,7 +30,7 @@ requests==2.19.1
 # xmltodict (from moto==1.1.23->-r requirements-dev.txt (line 12))
 xmltodict==0.11.0
 # werkzeug (from moto==1.1.23->-r requirements-dev.txt (line 12))
-Werkzeug==0.14.1
+Werkzeug==0.15.3
 # pyaml (from moto==1.1.23->-r requirements-dev.txt (line 12))
 pyaml==17.12.1
 # pytz (from moto==1.1.23->-r requirements-dev.txt (line 12))
