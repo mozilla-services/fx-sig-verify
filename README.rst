@@ -102,7 +102,8 @@ Typical development setup, using a local virtual environment::
     cd fx-sig-verify
     virtualenv --python python2.7 venv
     source venv/bin/activate
-    pip install --requirements requirements-dev.txt
+    pip install --requirement requirements-dev.txt
+    pip install --editable .
 
 Local Testing
 -------------
