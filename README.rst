@@ -74,14 +74,14 @@ Installation
 
 There are three deployment scenarios for ``fx-sig_verify``:
 
-- As an AWS Lambda function - see :ref:`Lambda Installation` for the
+- As an AWS Lambda function - see `Lambda Installation`_ for the
   details.
 - As a set of command line tools to facilitate usage and operation of
   the Lambda function::
 
       pip install https://github.com/mozilla-services/fx-sig-verify
 
-  See :ref:usage for more details on command line tools
+  See `usage`_ for more details on command line tools
 
 - In `development`_ mode (see below).
 
@@ -137,5 +137,8 @@ Note, to combine the coverage data from all the tox environments run:
 AWS Testing
 -----------
 
-Testing on AWS requires an AWS account. Refer to :ref:`Lambda
-Installation` for details.
+Testing on AWS requires an AWS account. Refer to `Lambda
+Installation`_ for details.
+
+.. _Lambda Installation: docs/installation-on-aws.rst#installation
+.. _usage: docs/usage.rst#usage
