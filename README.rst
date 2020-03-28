@@ -96,7 +96,13 @@ Development
 
 At present, ``fx-sig-verify`` is python 2.7 only.
 
-Typical development setup, using a local virtual environment::
+Install Openssl dependencies::
+
+    sudo apt install libssl1.0-dev # Ubuntu or
+
+    sudo dnf install compat-openssl10-devel # Fedora
+
+And for the Python, a typical development setup. Using a local virtual environment::
 
     git clone https://github.com/mozilla-services/fx-sig-verify
     cd fx-sig-verify
