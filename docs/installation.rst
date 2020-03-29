@@ -4,7 +4,8 @@ Installation
 
 The primary use of this package is as a lambda function. Preparing a zip
 file for upload to AWS is done via ``make``. The default target is the
-zip file for upload. See the AWS Lambda documentation for additional
+zip file for upload. See the :ref:`AWS Lambda documentation
+<installation-on-aws>` for additional
 information on installing it.
 
 

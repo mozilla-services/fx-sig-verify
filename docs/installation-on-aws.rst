@@ -1,3 +1,6 @@
+.. _`lambda installation`:
+.. _installation-on-aws:
+
 Installation & Testing on AWS Lambda
 ====================================
 

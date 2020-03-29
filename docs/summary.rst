@@ -1,5 +1,5 @@
-Overview
-========
+Summary
+=======
 
 The purpose of this code is to validate that binary artifacts used to
 install Firefox desktop [#update]_, and distributed by Mozilla are also
