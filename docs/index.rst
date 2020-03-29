@@ -6,7 +6,7 @@ Contents
    :maxdepth: 2
 
    readme
-   overview
+   summary
    installation
    installation-on-aws.rst
    usage

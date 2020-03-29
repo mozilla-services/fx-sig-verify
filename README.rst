@@ -2,6 +2,12 @@
 Overview
 ========
 
+
+Documentation for this project is currently maintained restructured text format.
+A rendered version is available at https://fx-sig-verify.readthedocs.io/en/latest/ or read the source in the docs__ directory.
+
+__ docs/
+
 .. start-badges
 
 .. list-table::
@@ -65,77 +71,3 @@ Overview
 
 
 .. end-badges
-
-AWS Lambda to check code signatures to verify both presence and "signed
-by Mozilla" status.
-
-Installation
-============
-
-There are three deployment scenarios for ``fx-sig_verify``:
-
-- As an AWS Lambda function - see :ref:`Lambda Installation` for the
-  details.
-- As a set of command line tools to facilitate usage and operation of
-  the Lambda function::
-
-      pip install https://github.com/mozilla-services/fx-sig-verify
-
-  See :ref:usage for more details on command line tools
-
-- In `development`_ mode (see below).
-
-
-Documentation
-=============
-
-https://fx-sig-verify.readthedocs.io/
-
-Development
-===========
-
-At present, ``fx-sig-verify`` is python 2.7 only.
-
-Typical development setup, using a local virtual environment::
-
-    git clone https://github.com/mozilla-services/fx-sig-verify
-    cd fx-sig-verify
-    virtualenv --python python2.7 venv
-    source venv/bin/activate
-    pip install --requirement requirements-dev.txt
-    pip install --editable .
-
-Local Testing
--------------
-
-The local test runner is ``pytest``, with all local tests in the ``tests/``
-subdirectory. To run just the tests, use::
-
-    py.test tests
-
-To run the full CI suite, including document generation, use::
-
-    tox
-
-Note, to combine the coverage data from all the tox environments run:
-
-.. list-table::
-    :widths: 10 90
-    :stub-columns: 1
-
-    - - Windows
-      - ::
-
-            set PYTEST_ADDOPTS=--cov-append
-            tox
-
-    - - Other
-      - ::
-
-            PYTEST_ADDOPTS=--cov-append tox
-
-AWS Testing
------------
-
-Testing on AWS requires an AWS account. Refer to :ref:`Lambda
-Installation` for details.

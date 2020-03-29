@@ -1,3 +1,5 @@
+.. _usage:
+
 =====
 Usage
 =====
@@ -35,6 +37,8 @@ This script is from the `original source`__. It prints the certificate
 metadata and calculated hashes from the supplied ``exe`` file. This is
 useful for determining the exact validation cause.
 
+__ :ref:`base library`
+
 fx-sig-verify
 -------------
 
@@ -62,4 +66,3 @@ The script performs 2 functions:
       further processing
     - provides a brief summary of either type.
 
-__ :ref:`base library`

@@ -18,14 +18,26 @@ fxsv.zip: Dockerfile.build-environment.built
 help:
 	@echo "fxsv.zip	DEFAULT target - build lambda package"
 	@echo "help		this list"
+	@echo "docker-shell	obtain shell in docker container"
+	@echo "docker-test	run all tests in docker container"
+	@echo ""
 	@echo "upload		upload lambda function to AWS"
 	@echo "publish		publish lambda function on AWS"
 	@echo "invoke		execute test cases on AWS"
 	@echo "tests		execute tests locally via tox"
+	@echo "docker-test      execute tests in docker image"
 	@echo "populate_s3	upload test data to S3"
+	@echo ""
+	@echo "clean            remove built files"
 
 
 
+.PHONY: clean
+clean:
+	rm -f Dockerfile*built
+	rm -f fxsv.zip
+
+.PHONY: upload
 upload: fxsv.zip
 	@echo "Using AWS credentials for $$AWS_DEFAULT_PROFILE in $$AWS_REGION"
 	aws lambda update-function-code \
@@ -33,7 +45,7 @@ upload: fxsv.zip
 	    --function-name hwine_ffsv_dev \
 	    --zip-file fileb://$(PWD)/fxsv.zip \
 
-.PHONY: upload
+.PHONY: publish
 publish: upload
 	@echo "Using AWS credentials for $$AWS_DEFAULT_PROFILE in $$AWS_REGION"
 	aws lambda publish-version \
@@ -78,6 +90,15 @@ invoke-error:
 	    fi
 
 invoke: invoke-no-error invoke-error
+
+PHONY: docker-shell
+docker-shell: Dockerfile.build-environment.built
+	@echo Working directory mounted at /root/src
+	docker run --rm -it --volume $PWD:/root/src fxsv/build:latest bash
+
+PHONY: docker-test
+docker-test: Dockerfile.build-environment.built
+	docker run --rm -it --volume $PWD:/root fxsv/build:latest pytest tests
 
 # idea from
 # https://stackoverflow.com/questions/23032580/reinstall-virtualenv-with-tox-when-requirements-txt-or-setup-py-changes#23039826
