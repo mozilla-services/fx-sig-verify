@@ -1,4 +1,4 @@
 # these need to be installed in the lib subdir
-M2Crypto==0.26.0
-fleece==0.15.1
-pyasn1==0.2.3
+M2Crypto==0.35.2
+fleece==0.18.7
+pyasn1==0.4.8
