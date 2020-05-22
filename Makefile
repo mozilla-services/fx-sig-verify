@@ -152,5 +152,7 @@ populate_s3:
 	aws s3 cp tests/data/signtool.exe "s3://$(S3_BUCKET)/signtool.exe"
 	aws s3 cp tests/data/32bit.exe "s3://$(S3_BUCKET)/nightly/test/Firefox bogus thingy.exe"
 	aws s3 cp tests/data/2019-06-64bit.exe "s3://$(S3_BUCKET)/2019-06-64bit.exe"
+	aws s3 cp tests/data/2020-05-32bit.exe "s3://$(S3_BUCKET)/2020-05-32bit.exe"
+
 
 # vim: noet ts=8
