@@ -1,5 +1,11 @@
 Changelog
 =========
+`0.4.10`__
+-----------------------------------------
+__ https://github.com/mozilla-services/fx-sig-verify/tree/v0.4.10
+
+- Update for new Authenticode certificate `bug 1634577`__
+
 `0.4.9`__
 -----------------------------------------
 __ https://github.com/mozilla-services/fx-sig-verify/tree/v0.4.9
