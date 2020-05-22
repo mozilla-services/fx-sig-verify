@@ -77,6 +77,7 @@ good_file_names_list = [
     '32bit.exe',  # signed with older valid key
     '32bit_new.exe',  # signed with current valid key
     '2019-06-64bit.exe', # cert valid since bug 1554767
+    '2020-05-32bit.exe', # cert valid since bug 1634577
 ]
 
 
