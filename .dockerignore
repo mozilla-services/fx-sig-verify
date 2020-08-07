@@ -1,3 +1,13 @@
+# just include what little we want
+*
+!*.rst
+!requirements*
+!setup.py
+!src
+!tests
+
+# now exclude what we don't need from that part
+# (last match wins)
 # Do not copy over file we know to be platform specific
 src/lib
 **/*.egg-info
@@ -9,12 +19,3 @@ src/lib
 dist
 build
 *.zip
-
-# Stuff not needed
-.tox
-venv
-mnt
-.git*
-logs*
-htmlcov
-notes_*
