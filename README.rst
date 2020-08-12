@@ -6,6 +6,11 @@ Overview
 Documentation for this project is currently maintained restructured text format.
 A rendered version is available at https://fx-sig-verify.readthedocs.io/en/latest/ or read the source in the docs__ directory.
 
+If you are just looking to run the scripts locally, use the
+`Dockerfile.dev-environment`_ to build a docker image to use. VS-Code will
+offer to do that for you. This is the recommended way to manually check
+binaries.
+
 __ docs/
 
 .. start-badges
@@ -71,3 +76,5 @@ __ docs/
 
 
 .. end-badges
+
+.. _Dockerfile.dev-environment: ./Dockerfile.dev-environment

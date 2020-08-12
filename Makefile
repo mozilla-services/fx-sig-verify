@@ -19,6 +19,7 @@ help:
 	@echo "fxsv.zip	DEFAULT target - build lambda package"
 	@echo "help		this list"
 	@echo "docker-shell	obtain shell in docker container"
+	@echo "                 with source mounted & code installed"
 	@echo "docker-test	run all tests in docker container"
 	@echo ""
 	@echo "upload		upload lambda function to AWS"
@@ -92,9 +93,12 @@ invoke-error:
 invoke: invoke-no-error invoke-error
 
 PHONY: docker-shell
-docker-shell: Dockerfile.build-environment.built
-	@echo Working directory mounted at /root/src
-	docker run --rm -it --volume $PWD:/root/src fxsv/build:latest bash
+docker-shell: Dockerfile.dev-environment.built
+	@echo Working directory mounted at /home/fxsv
+	docker run --rm -it \
+	    --volume $$PWD:/home/fxsv \
+	    --user $$(id -u):$$(id -g) \
+	    fxsv/dev:latest
 
 PHONY: docker-test
 docker-test: Dockerfile.build-environment.built
