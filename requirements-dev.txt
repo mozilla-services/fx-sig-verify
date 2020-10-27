@@ -24,7 +24,7 @@ botocore==1.10.62
 # cookies (from moto==1.1.23->-r requirements-dev.txt (line 12))
 cookies==2.2.1
 # cryptography>=2.0.0 (from moto==1.1.23->-r requirements-dev.txt (line 12))
-cryptography==2.3
+cryptography==3.2
 # requests>=2.5 (from moto==1.1.23->-r requirements-dev.txt (line 12))
 requests==2.19.1
 # xmltodict (from moto==1.1.23->-r requirements-dev.txt (line 12))
