@@ -78,6 +78,7 @@ good_file_names_list = [
     '32bit_new.exe',  # signed with current valid key
     '2019-06-64bit.exe', # cert valid since bug 1554767
     '2020-05-32bit.exe', # cert valid since bug 1634577
+    'FxSetup-87.0b2.exe',  # signed with sha2 timestamp issue 89
 ]
 
 
