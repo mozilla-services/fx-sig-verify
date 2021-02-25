@@ -30,6 +30,8 @@ help:
 	@echo "populate_s3	upload test data to S3"
 	@echo ""
 	@echo "clean            remove built files"
+	@echo ""
+	@echo "docs             Generate docs locally"
 
 
 
@@ -159,5 +161,9 @@ populate_s3:
 	aws s3 cp tests/data/2020-05-32bit.exe "s3://$(S3_BUCKET)/2020-05-32bit.exe"
 	aws s3 cp tests/data/FxSetup-87.0b2.exe "s3://$(S3_BUCKET)/FxSetup-87.0b2.exe"
 
+
+.PHONY: docs
+docs:
+	tox -e docs
 
 # vim: noet ts=8
