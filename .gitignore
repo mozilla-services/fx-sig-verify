@@ -2,6 +2,14 @@
 logs*
 *_notes/
 
+# vscode
+.vscode/
+# cruft from docker sessions
+.bash*
+# pytest cruft
+pytest_cache/
+.pytest_cache/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

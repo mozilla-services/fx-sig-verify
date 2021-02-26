@@ -30,6 +30,8 @@ help:
 	@echo "populate_s3	upload test data to S3"
 	@echo ""
 	@echo "clean            remove built files"
+	@echo ""
+	@echo "docs             Generate docs locally"
 
 
 
@@ -102,7 +104,7 @@ docker-shell: Dockerfile.dev-environment.built
 
 PHONY: docker-test
 docker-test: Dockerfile.build-environment.built
-	docker run --rm -it --volume $PWD:/root fxsv/build:latest pytest tests
+	docker run --rm -it --volume $PWD:/root which -a osslsigncode #fxsv/build:latest pytest tests
 
 # idea from
 # https://stackoverflow.com/questions/23032580/reinstall-virtualenv-with-tox-when-requirements-txt-or-setup-py-changes#23039826
@@ -159,5 +161,9 @@ populate_s3:
 	aws s3 cp tests/data/2020-05-32bit.exe "s3://$(S3_BUCKET)/2020-05-32bit.exe"
 	aws s3 cp tests/data/FxSetup-87.0b2.exe "s3://$(S3_BUCKET)/FxSetup-87.0b2.exe"
 
+
+.PHONY: docs
+docs:
+	tox -e docs
 
 # vim: noet ts=8

@@ -9,6 +9,8 @@ Layout based on https://github.com/ionelmc/cookiecutter-pylibrary
 """
 from __future__ import print_function
 import argparse
+import subprocess
+import sys
 # set up path for everything else
 import fx_sig_verify
 from fx_sig_verify.validate_moz_signature import (MozSignedObject,
@@ -96,3 +98,6 @@ def main(cmd_line=None):
         valid = False
     artifact.report_validity(valid)
     raise SystemExit(0 if valid else 1)
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

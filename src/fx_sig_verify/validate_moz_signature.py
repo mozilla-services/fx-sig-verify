@@ -7,6 +7,8 @@ from io import BytesIO
 import datetime
 import json
 import os
+import subprocess
+import tempfile
 import time
 import urllib
 import urllib2
@@ -179,7 +181,7 @@ class MozSignedObject(object):
     def report_validity(self, valid):
         raise ValueError("report_validity not implemented")
 
-    def get_flo(self, valid):
+    def get_flo(self, valid=None):
         raise ValueError("get_flo not implemented")
 
     def show_file_stats(self, objf):
@@ -228,6 +230,47 @@ class MozSignedObject(object):
 
     @trace_xray_subsegment()
     def check_exe(self):
+        return self.check_exe_new()
+
+    def check_exe_new(self):
+        """
+        Determine if the contents of `objf` are a valid Windows executable
+        signed by Mozilla's Authenticode certificate.
+
+        :returns boolean: True if object has passed all tests.
+
+        :raises SigVerifyException: if any specific problem is identified in
+            the object
+        """
+        cert_serial_number = "invalid hex data"
+        with self.get_flo() as objf:
+            self.show_file_stats(objf)
+            # shelling out means we need a real file on disk, so create one
+            with tempfile.NamedTemporaryFile(mode="w+b") as real_file:
+                real_file.write(objf.read())
+                real_file.flush()
+                try:
+                    output = subprocess.check_output(["osslsigncode", "verify", real_file.name])
+                except Exception as e:
+                    raise SigVerifyNoSignature
+            # re to get mozilla signature
+            for l in [line.strip() for line in output.splitlines()]:
+                if l.startswith("Serial : "):
+                    cert_serial_number = int(l.split(":")[-1].strip(), 16)
+                    break
+                # the followin situation occurs with post balrog stub installers
+                if l.startswith("Calculated PE checksum:") and l.endswith("MISMATCH!!!!"):
+                    raise SigVerifyBadSignature("Checksum Mismatch")
+            else:
+                raise Exception("No serial in osslsigncode output: %s".format(output))
+
+        valid_signature = cert_serial_number in VALID_CERTS
+        if not valid_signature:
+            raise SigVerifyNonMozSignature
+        return valid_signature
+
+
+    def check_exe_old(self):
         """
         Determine if the contents of `objf` are a valid Windows executable
         signed by Mozilla's Authenticode certificate.
