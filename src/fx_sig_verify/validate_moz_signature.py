@@ -14,9 +14,6 @@ import urllib
 import urllib2
 
 import fx_sig_verify
-from verify_sigs import auth_data
-from verify_sigs import fingerprint
-from verify_sigs import pecoff_blob
 
 # Certificate serial numbers we consider valid
 VALID_CERTS = [
@@ -68,21 +65,6 @@ def debug(*args):
         now = datetime.datetime.utcnow().isoformat()
         for msg in args:
             print("{}: {}".format(now, msg))
-
-
-# EVIL EVIL -- Monkeypatch to extend accessor
-# This patch is part of the google code, and must be set before calling any of
-# the analysis routines. See the verify_sigs directory for license information.
-# TODO(user): This was submitted to pyasn1. Remove when we have it back.
-def F(self, idx):
-    if type(idx) is int:
-        return self.getComponentByPosition(idx)
-    else:
-        return self.getComponentByName(idx)
-from pyasn1.type import univ  # noqa: E402 pylint: disable-msg=C6204,C6203
-univ.SequenceAndSetBase.__getitem__ = F
-del F, univ
-# EVIL EVIL
 
 
 class MozSignedObject(object):
@@ -265,102 +247,6 @@ class MozSignedObject(object):
                 raise Exception("No serial in osslsigncode output: %s".format(output))
 
         valid_signature = cert_serial_number in VALID_CERTS
-        if not valid_signature:
-            raise SigVerifyNonMozSignature
-        return valid_signature
-
-
-    def check_exe_old(self):
-        """
-        Determine if the contents of `objf` are a valid Windows executable
-        signed by Mozilla's Authenticode certificate.
-
-        This code mostly lifted from
-            src/fx_sig_verify/verify_sigs/print_pe_certs.py
-
-        with print statements removed :)
-
-        :returns boolean: True if object has passed all tests.
-
-        :raises SigVerifyException: if any specific problem is identified in
-            the object
-        """
-        objf = self.get_flo()
-        self.show_file_stats(objf)
-        try:
-            fingerprinter = fingerprint.Fingerprinter(objf)
-            is_pecoff = fingerprinter.EvalPecoff()
-            fingerprinter.EvalGeneric()
-            results = fingerprinter.HashIt()
-        except Exception as e:
-            raise SigVerifyNoSignature(e)
-        finally:
-            objf.close()
-
-        if not is_pecoff:
-            msg = 'This is not a PE/COFF binary. Exiting.'
-            print(msg)
-            raise SigVerifyNoSignature(msg)
-
-        signed_pecoffs = [x for x in results if x['name'] == 'pecoff' and
-                          'SignedData' in x]
-
-        if not signed_pecoffs:
-            msg = 'This PE/COFF binary has no signature. Exiting.'
-            raise SigVerifyNoSignature('This PE/COFF binary has no signature. '
-                                       'Exiting.')
-
-        # TODO - can there be multiple signed_pecoffs?
-        signed_pecoff = signed_pecoffs[0]
-        if len(signed_pecoffs) > 1:
-            msg = ("Found {:d} signed pecoffs. Only processing first "
-                   "one.".format(len(signed_pecoffs)))
-            self.add_message(msg)
-            if self.verbose:
-                print(msg)
-
-        signed_datas = signed_pecoff['SignedData']
-        # There may be multiple of these, if the windows binary was signed
-        # multiple times, e.g. by different entities. Each of them adds a
-        # complete SignedData blob to the binary.
-        # TODO(user): Process all instances
-        signed_data = signed_datas[0]
-        if self.verbose and len(signed_datas) > 1:
-            msg = ("Found {:d} signed datas. Only processing first "
-                   "one.".format(len(signed_datas)))
-            self.add_message(msg)
-            if self.verbose:
-                print(msg)
-            msg = "Multiple Signatures"
-            raise SigVerifyBadSignature(msg)
-
-        blob = pecoff_blob.PecoffBlob(signed_data)
-
-        auth = auth_data.AuthData(blob.getCertificateBlob())
-        content_hasher_name = auth.digest_algorithm().name
-        computed_content_hash = signed_pecoff[content_hasher_name]
-
-        try:
-            auth.ValidateAsn1()
-            auth.ValidateHashes(computed_content_hash)
-            auth.ValidateSignatures()
-            auth.ValidateCertChains(time.gmtime())
-        except auth_data.Asn1Error as e:
-            if auth.openssl_error:
-                msg = 'OpenSSL Errors:\n%s' % auth.openssl_error
-                self.add_error(msg)
-            else:
-                msg = 'Asn1Error: {}'.format(str(e))
-            raise SigVerifyBadSignature(msg)
-
-        # TODO - validate if this is okay for now.
-        # base validity on some combo of auth fields.
-
-        # signing_cert_id is a tuple with a last element being the serial
-        # number of the certificate. That is a known quantity for our products.
-        cert_serial_number = auth.signing_cert_id[-1]
-        valid_signature = (auth.has_countersignature and (cert_serial_number in
-                                                          VALID_CERTS))
         if not valid_signature:
             raise SigVerifyNonMozSignature
         return valid_signature
