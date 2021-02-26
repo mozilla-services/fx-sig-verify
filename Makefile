@@ -104,7 +104,7 @@ docker-shell: Dockerfile.dev-environment.built
 
 PHONY: docker-test
 docker-test: Dockerfile.build-environment.built
-	docker run --rm -it --volume $PWD:/root fxsv/build:latest pytest tests
+	docker run --rm -it --volume $PWD:/root which -a osslsigncode #fxsv/build:latest pytest tests
 
 # idea from
 # https://stackoverflow.com/questions/23032580/reinstall-virtualenv-with-tox-when-requirements-txt-or-setup-py-changes#23039826
