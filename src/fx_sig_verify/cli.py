@@ -7,7 +7,7 @@ When called from the command line, the SigVerifyTooBig exception is not raised.
 
 Layout based on https://github.com/ionelmc/cookiecutter-pylibrary
 """
-from __future__ import print_function
+
 import argparse
 import subprocess
 import sys

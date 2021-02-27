@@ -68,11 +68,7 @@ setup(
                     ],
 
     install_requires=[
-        "M2Crypto==0.26.0",
         "fleece==0.15.1",
-        "pyasn1==0.2.3",
-        # verify-sigs is vendored in, so not listed here
-        # "verify-sigs",
     ],
     extras_require={
         # eg:

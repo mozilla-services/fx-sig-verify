@@ -2,7 +2,6 @@
 appdirs==1.4.3
 boto3==1.7.62
 docutils==0.14
-futures==3.2.0
 jmespath==0.9.3
 packaging==17.1
 pyparsing==2.2.0

@@ -48,4 +48,4 @@ def test_raise_exception_on_S3_error():
     with pytest.raises(IOError):
         results = lambda_handler(event, u.dummy_context)
     # and function should not have returned
-    assert 'results' not in locals().keys()
+    assert 'results' not in list(locals().keys())

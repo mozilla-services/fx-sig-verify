@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from __future__ import print_function
+
 import collections
 import fileinput
 import json
@@ -8,6 +8,7 @@ import logging
 import math
 import argparse
 import re
+from functools import reduce
 
 # below should probably be a parameter to the app
 CONFIGURED_MAX_RUN_TIME_MS = 60 * 1000
@@ -177,7 +178,7 @@ class JsonSummerizer(Summerizer):
                     pass
         # compute uncategorized failures
         known_fails = reduce(lambda x, y: x+y,
-                             [v for k, v in counts.iteritems()
+                             [v for k, v in counts.items()
                               if k.endswith("Signature")], 0)
         counts['other'] = counts['fail'] - known_fails
         self.counts = counts
@@ -270,7 +271,7 @@ class MetricSummerizer(Summerizer):
         c["max_memory_pcnt"] = (c["max_memory_invocations"] * 100
                                 / invocations)
         c["avg_memory"] = int(math.ceil(c["total_memory"] / invocations))
-        unprocessed = [k for k, v in self.retried_requests.iteritems()
+        unprocessed = [k for k, v in self.retried_requests.items()
                        if v > 0]
         c["unprocessed"] = unprocessed
         c["retry_never_succeeded"] = len(unprocessed)
@@ -346,10 +347,9 @@ class ExtractSummarizer(Summerizer):
         # each request id should have a START, END, and REPORT line, plus one
         # JSON line.
         starters = ('S', 'E', 'R', '{', )
-        line_start_patterns = map(lambda x: re.compile(x, re.VERBOSE),
-                                  map(lambda x: TIME_STAMP+'\s*'+x, starters))
+        line_start_patterns = [re.compile(x, re.VERBOSE) for x in [TIME_STAMP+'\s*'+x for x in starters]]
         funky_count = 0
-        for rqst_id, lines in self.details.iteritems():
+        for rqst_id, lines in self.details.items():
             counts = [0, 0, 0, 0]
             for i, pattern in enumerate(line_start_patterns):
                 counts[i] = reduce(lambda x, y: x+1 if y else x,

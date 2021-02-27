@@ -1,5 +1,5 @@
 language: python
-python: '2.7'
+python: '3.6'
 sudo: false
 env:
   global:
@@ -10,14 +10,14 @@ env:
     - TOXENV=docs
 
       # - TOXENV=py27,report,coveralls,codecov
-    - TOXENV=py27,report,codecov
+    - TOXENV=py36,report,codecov
 
 before_install:
   - python --version
   - uname -a
   - lsb_release -a
 install:
-  - pip install tox==2.9.1
+  - pip install tox==3.15.2
   - virtualenv --version
   - easy_install --version
   - pip --version
