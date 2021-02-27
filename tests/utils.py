@@ -169,7 +169,7 @@ def upload_file(bucket, filename, key_name=None):
     if not key_name:
         # if a keyname isn't specified, build one
         key_name = filename.replace(' ', '+')
-    bucket.put_object(Body=open(fname, 'r'), Key=key_name)
+    bucket.put_object(Body=open(fname, 'rb'), Key=key_name)
     return (bucket_name, key_name)
 
 

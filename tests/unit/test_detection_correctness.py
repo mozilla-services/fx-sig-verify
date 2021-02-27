@@ -14,7 +14,7 @@ def successful_invocations():
         "2020-05-32bit.exe",
         "FxSetup-87.0b2.exe",
     )
-    return map(lambda x: [data_file_path + x], valid_sig_list)
+    return [[data_file_path + x] for x in valid_sig_list]
 
 
 def test_good_signature(successful_invocations):
@@ -37,7 +37,7 @@ def invalid_invocations():
         "signtool.exe",
         "vswriter.exe",
     )
-    return map(lambda x: [data_file_path + x], invalid_sig_list)
+    return [[data_file_path + x] for x in invalid_sig_list]
 
 
 def test_bad_signature(invalid_invocations):

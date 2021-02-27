@@ -1,4 +1,4 @@
-from __future__ import print_function
+
 from fleece import boto3
 from fleece.xray import (monkey_patch_botocore_for_xray,
                          trace_xray_subsegment)
@@ -10,8 +10,8 @@ import os
 import subprocess
 import tempfile
 import time
-import urllib
-import urllib2
+import urllib.request, urllib.parse, urllib.error
+import urllib.request, urllib.error, urllib.parse
 
 import fx_sig_verify
 
@@ -154,16 +154,16 @@ class MozSignedObject(object):
         lines.append("{} for {}".format(self.get_status(), self.artifact_name))
         if self.errors:
             lines.append("errors:")
-            lines.extend(map(indent, self.errors))
+            lines.extend(list(map(indent, self.errors)))
         if self.messages:
             lines.append("other info:")
-            lines.extend(map(indent, self.messages))
+            lines.extend(list(map(indent, self.messages)))
         return '\n'.join(lines)
 
     def report_validity(self, valid):
         raise ValueError("report_validity not implemented")
 
-    def get_flo(self, valid=None):
+    def get_flo(self, valid=None)-> BytesIO:
         raise ValueError("get_flo not implemented")
 
     def show_file_stats(self, objf):
@@ -203,7 +203,7 @@ class MozSignedObject(object):
             # ignore dependent & try builds, which is based on the first part
             # of the key (in S3 terms), which is the "path" element of an S3
             # url
-            url = urllib2.urlparse.urlparse(self.artifact_name)
+            url = urllib.parse.urlparse(self.artifact_name)
             key = url.path
             if key.startswith(PRODUCTION_KEY_PREFIX_EXCLUSIONS):
                 self.add_message("Excluded from validation by key prefix")
@@ -232,7 +232,7 @@ class MozSignedObject(object):
                 real_file.write(objf.read())
                 real_file.flush()
                 try:
-                    output = subprocess.check_output(["osslsigncode", "verify", real_file.name])
+                    output = subprocess.check_output(["osslsigncode", "verify", real_file.name], universal_newlines=True)
                 except Exception as e:
                     raise SigVerifyNoSignature
             # re to get mozilla signature
@@ -491,7 +491,8 @@ def artifact_to_check_via_s3(lambda_event_record):
     bucket_name = lambda_event_record['s3']['bucket']['name']
     key_name = lambda_event_record['s3']['object']['key']
     # issue #14 - the below decode majik is from AWS sample code.
-    real_key_name = urllib.unquote_plus(key_name.encode('utf8'))
+
+    real_key_name = urllib.parse.unquote_plus(key_name)
     obj = MozSignedObjectViaLambda(bucket_name, real_key_name)
     return obj
 

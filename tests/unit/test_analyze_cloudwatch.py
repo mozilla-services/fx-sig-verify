@@ -4,6 +4,7 @@
 import re
 
 from analyze_cloudwatch import main as analyze_cloudwatch
+from functools import reduce
 
 DATA_FILE = "tests/data/cloud_watch_data.txt"
 
