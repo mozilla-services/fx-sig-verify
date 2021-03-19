@@ -1,0 +1,75 @@
+# Ensure there is a trailing slash
+ARG FUNCTION_DIR="/function/"
+
+
+FROM public.ecr.aws/lambda/python:3.6 as build-image
+# Include global arg in this stage of the build
+ARG FUNCTION_DIR
+
+# Install aws-lambda-cpp build dependencies
+RUN yum install -y \
+        g++ \
+        make \
+        automake \
+        cmake \
+        unzip \
+        libcurl4-openssl-dev
+
+
+# Create function directory
+#RUN mkdir -p ${FUNCTION_DIR}
+WORKDIR ${FUNCTION_DIR}
+
+# Copy handler function
+COPY . ${FUNCTION_DIR}
+
+# make sure our modules are found
+ENV PYTHONPATH=${FUNCTION_DIR}
+
+# Install the function's dependencies
+RUN pip install --upgrade pip
+RUN pip install \
+        --target ${FUNCTION_DIR} \
+        awslambdaric \
+        -r requirements.txt \
+        ;
+# For reasons I don't understand, the 'pip install -e' scenario chokes
+# on the '--target' option accepted by the other installs. So keep
+# separate
+RUN pip install \
+        -e . \
+        ;
+### RUN pip install \
+###         --target ${FUNCTION_DIR} \
+###         -r requirements.txt \
+###         ;
+### RUN pip install \
+###         -e . \
+###         ;
+
+
+FROM public.ecr.aws/lambda/python:3.6 as build-image-osslsigncode
+# pull image from public.ecr.aws/lambda/python:3.6
+RUN \
+    yum install -y \
+        ftp://ftp.pbone.net/mirror/ftp5.gwdg.de/pub/opensuse/repositories/home:/danimo/CentOS_7/x86_64/osslsigncode-1.7.1-5.3.x86_64.rpm
+RUN pip install --upgrade pip
+
+FROM build-image-osslsigncode
+
+# Include global arg in this stage of the build
+ARG FUNCTION_DIR
+# Set working directory to function root directory
+WORKDIR ${FUNCTION_DIR}
+
+# Copy in the built dependencies
+COPY --from=build-image ${FUNCTION_DIR} ${FUNCTION_DIR}
+
+# make sure our modules are found
+ENV PYTHONPATH=${FUNCTION_DIR}
+
+RUN echo "pp=$PYTHONPATH; pwd=$PWD" ; pip install -e .
+
+# Production environment
+ENTRYPOINT [ "/var/lang/bin/python", "-m", "awslambdaric" ]
+CMD [ "fx_sig_verify.validate_moz_signature.lambda_handler" ]

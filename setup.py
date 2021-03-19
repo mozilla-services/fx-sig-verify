@@ -25,16 +25,11 @@ def read(*names, **kwargs):
 setup(
     name='fx_sig_verify',
     version='0.4.10-1',
-    license='MPL',
+    license='MPL2',
     description='AWS Lambda to check code signatures.',
-    long_description='%s\n%s' % (
-        re.compile('^.. start-badges.*^.. end-badges',
-                   re.M | re.S).sub('', read('README.rst')),
-        re.sub(':[a-z]+:`~?(.*?)`', r'``\1``', read('CHANGELOG.rst'))
-    ),
     author='Hal Wine',
     author_email='hwine@mozilla.com',
-    url='https://github.com/hwine/fx-sig-verify',
+    url='https://github.com/mozilla/fx-sig-verify',
     packages=find_packages('src'),
     package_dir={'': 'src'},
     py_modules=[splitext(basename(path))[0] for path in glob('src/*.py')],
@@ -51,8 +46,8 @@ setup(
         'Operating System :: POSIX',
         'Operating System :: Microsoft :: Windows',
         'Programming Language :: Python',
-        # 'Programming Language :: Python :: 3',
-        # 'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: Implementation :: CPython',
         # uncomment if you test on these interpreters:
         # 'Programming Language :: Python :: Implementation :: IronPython',
@@ -68,7 +63,7 @@ setup(
                     ],
 
     install_requires=[
-        "fleece==0.15.1",
+        "fleece",  ## ==0.15.1",
     ],
     extras_require={
         # eg:

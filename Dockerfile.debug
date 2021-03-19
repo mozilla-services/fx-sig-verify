@@ -1,0 +1,33 @@
+# manually keep in sync with Dockerfile.prod value
+ARG FUNCTION_DIR="/function"
+
+FROM fxsigverify:latest as fxsv_rie
+# Add local debug support to prod image
+
+# Include global arg in this stage of the build
+ARG FUNCTION_DIR
+WORKDIR ${FUNCTION_DIR}
+RUN ls -l /entry.sh ; ls -ld ${FUNCTION_DIR} ; echo "before everything"
+
+# Debug environment
+# (Optional) Add Lambda Runtime Interface Emulator and use a script in the ENTRYPOINT for simpler local runs
+ADD https://github.com/aws/aws-lambda-runtime-interface-emulator/releases/latest/download/aws-lambda-rie /usr/bin/aws-lambda-rie
+RUN yum install -y git && \
+    ln -sf /var/lang/bin/python3 /usr/local/bin/python && \
+    chmod 755 /usr/bin/aws-lambda-rie
+RUN ls -l /entry.sh ; ls -ld ${FUNCTION_DIR} ; echo "after RIE install"
+
+### # since we don't know how uptodate the prod image is, copy over any recent changes to allow quicker debug cycles
+### COPY . .
+### COPY entry.sh
+### RUN chmod 755 /entry.sh && \
+###     python3 -m pip install -r requirements-dev.txt && \
+###     python3 -m pip install -e .
+
+COPY entry.sh /entry.sh
+RUN ls -l /entry.sh ; ls -ld ${FUNCTION_DIR} ; echo "after copy"
+RUN chmod 755 /entry.sh
+RUN ls -l /entry.sh ; ls -ld ${FUNCTION_DIR} ; echo "after chmod"
+
+ENTRYPOINT [ "/entry.sh" ]
+CMD [ "fx_sig_verify.validate_moz_signature.lambda_handler" ]

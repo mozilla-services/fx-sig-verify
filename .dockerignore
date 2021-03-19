@@ -1,15 +1,17 @@
 # just include what little we want
 *
-!*.rst
+#!*.rst
 !requirements*
 !setup.py
-!src
-!tests
+!entry.sh
+!src/fx_sig_verify/*.py
+!src/scripts
+#!tests
 
 # now exclude what we don't need from that part
 # (last match wins)
 # Do not copy over file we know to be platform specific
-src/lib
+#src/lib
 **/*.egg-info
 
 # we want a clean build
