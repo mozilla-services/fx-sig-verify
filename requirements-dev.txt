@@ -17,7 +17,7 @@ git+https://github.com/hwine/moto.git@pass-subject-through
 
 
 # Jinja2>=2.8 (from moto==1.1.23->-r requirements-dev.txt (line 12))
-Jinja2==2.10
+Jinja2==2.11.3
 # boto>=2.36.0 (from moto==1.1.23->-r requirements-dev.txt (line 12))
 boto==2.49.0
 # botocore>=1.7.12 (from moto==1.1.23->-r requirements-dev.txt (line 12))
