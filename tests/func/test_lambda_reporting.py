@@ -28,6 +28,7 @@ def test_always_log_output_issue_17(setter, fname, capsys):
     out, err = capsys.readouterr()
     # put useful information in failure output
     print("response: '{}'".format(results))
+    print(f"stdout:\n{out}\n\nstderr:\n{err}")
     assert out != ''
     assert err == ''
 

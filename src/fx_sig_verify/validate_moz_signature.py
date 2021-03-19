@@ -10,6 +10,7 @@ import os
 import subprocess
 import tempfile
 import time
+from typing import Optional
 import urllib.request, urllib.parse, urllib.error
 import urllib.request, urllib.error, urllib.parse
 
@@ -111,7 +112,7 @@ class MozSignedObject(object):
                                                   verbose_override))
 
     def __init__(self, *args, **kwargs):
-        self.artifact_name = None
+        self.artifact_name: Optional[str] = None
         self.object_status = None
         self.errors = []
         self.messages = []
@@ -203,7 +204,7 @@ class MozSignedObject(object):
             # ignore dependent & try builds, which is based on the first part
             # of the key (in S3 terms), which is the "path" element of an S3
             # url
-            url = urllib.parse.urlparse(self.artifact_name)
+            url = urllib.parse.urlparse(str(self.artifact_name))
             key = url.path
             if key.startswith(PRODUCTION_KEY_PREFIX_EXCLUSIONS):
                 self.add_message("Excluded from validation by key prefix")
@@ -224,27 +225,52 @@ class MozSignedObject(object):
         :raises SigVerifyException: if any specific problem is identified in
             the object
         """
+        def show_output(results) -> None:
+            return
+            if results is None:
+                print("No results from osslsigncode run (likely exception)")
+            else:
+                print(f"osslsigncode exitcode: {results.returncode}\n"
+                    f"-- stderr:\n'{results.stderr}'"
+                    f"\n-- stdout\n'{results.stdout}'")
+
         cert_serial_number = "invalid hex data"
         with self.get_flo() as objf:
             self.show_file_stats(objf)
             # shelling out means we need a real file on disk, so create one
             with tempfile.NamedTemporaryFile(mode="w+b") as real_file:
+                print(f"real_file: {dir(real_file)}\n{repr(real_file)}")
+                print(f"objf: {dir(objf)}\n{repr(objf)}")
+                fname = getattr(real_file, "name", "unknown file name")
                 real_file.write(objf.read())
                 real_file.flush()
+                real_file.seek(0, 0)
+                results = None      # needed for linter
                 try:
-                    output = subprocess.check_output(["osslsigncode", "verify", real_file.name], universal_newlines=True)
+                    results = subprocess.run(["osslsigncode", "verify", fname], universal_newlines=True,
+                        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                    show_output(results)
+                    if results.returncode != 0:
+                        # file is badly formed
+                        raise SigVerifyBadSignature(f"Corrupted signature in {objf.name}: {results.returncode}")
                 except Exception as e:
+                    print(f"osslsigncode exception {repr(e)}")
+                    show_output(results)
                     raise SigVerifyNoSignature
-            # re to get mozilla signature
-            for l in [line.strip() for line in output.splitlines()]:
+            # parse to get mozilla signature
+            for l in [line.strip() for line in results.stdout.splitlines()]:
+                # first "Serial" line is for the signature, rest are
+                # certificates
                 if l.startswith("Serial : "):
                     cert_serial_number = int(l.split(":")[-1].strip(), 16)
                     break
                 # the followin situation occurs with post balrog stub installers
+                # i.e. it shouldn't occur with items uploaded to product
+                # delivery
                 if l.startswith("Calculated PE checksum:") and l.endswith("MISMATCH!!!!"):
                     raise SigVerifyBadSignature("Checksum Mismatch")
             else:
-                raise Exception("No serial in osslsigncode output: %s".format(output))
+                raise Exception(f"No serial in osslsigncode output: '{results.stdout}'")
 
         valid_signature = cert_serial_number in VALID_CERTS
         if not valid_signature:
@@ -252,9 +278,22 @@ class MozSignedObject(object):
         return valid_signature
 
 
+class BytesIOWithName(BytesIO):
+    """
+    BytesIOWithName - keep track of object's orgininal name
+
+    For better error messages, we want to pass along the orginal name of the object.
+
+    Args:
+        original_name (str): name human will recognize
+    """
+    def __init__(self, *args, original_name:str=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.original_name = original_name or "no-name-supplied"
+
 class MozSignedObjectViaLambda(MozSignedObject):
     def __init__(self, bucket=None, key=None, *args, **kwargs):
-        super(type(self), self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.bucket_name = bucket
         self.key_name = key
         self.s3_wait_time = 0
@@ -320,11 +359,11 @@ class MozSignedObjectViaLambda(MozSignedObject):
     def get_flo(self):
         s3_client = boto3.client('s3')
         debug("in get_flo")
+        start_waiting = time.time()
         try:
             # Make sure the object is really available taken from
             #   https://blog.rackspace.com/the-devnull-s3-bucket-hacking-with-aws-lambda-and-python
             # Don't use defaults, though -- that's 100 sec during testing!
-            start_waiting = time.time()
             waiter = s3_client.get_waiter('object_exists')
             waiter.wait(Bucket=self.bucket_name, Key=self.key_name,
                         WaiterConfig={'Delay': 3, 'MaxAttempts': 3})
@@ -348,7 +387,7 @@ class MozSignedObjectViaLambda(MozSignedObject):
             print(msg)
             raise SigVerifyTooBig(msg)
         debug("before body read")
-        flo = BytesIO(result['Body'].read())
+        flo = BytesIOWithName(result['Body'].read(), original_name=self.key_name)
         debug("after read() flo={}".format(type(flo)))
         return flo
 
@@ -518,6 +557,7 @@ def lambda_handler(event, context):
                 'request_id': context.aws_request_id,
                 }
     results = []
+    had_S3_error = False
     for record in unpacked_s3_events(event, response):
         artifact = artifact_to_check_via_s3(record)
         try:
@@ -558,11 +598,21 @@ def lambda_handler(event, context):
             artifact.add_error("app failure 2: {}".format(str(e)))
         artifact.report_validity()
         results.append(artifact.summary())
+        had_S3_error = any((had_S3_error, artifact.had_s3_error))
     response['results'] = results
     # always output response to CloudWatch (issue #17)
     # in json format
-    print(json.dumps(response))
+    # from contextlib import redirect_stdout
+    # import sys
+    # with redirect_stdout(sys.stderr):
+    #     print(json.dumps(response))
     # AWS will retry for us if we fail. So let's do that on an S3 error.
-    if artifact.had_s3_error:
+    if had_S3_error:
+        # make best effort to get debug info. seems to get lost in container
+        # version of lambda
+        # TODO: delete flush if it doesn't help with error message
+        import sys
+        sys.stderr.flush()
+        sys.stdout.flush()
         raise IOError("S3 error, try again")
     return response

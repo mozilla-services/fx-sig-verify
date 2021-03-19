@@ -90,14 +90,18 @@ def main(cmd_line=None):
     """
     MozSignedObject.set_verbose(True)
     MozSignedObject.set_production_criteria(False)
+    found_bad_file = False
     args = parse_args(cmd_line=cmd_line)
-    artifact = MozSignedObjectViaCLI(args.suspect[0])
-    try:
-        valid = artifact.process_one_local_file()
-    except SigVerifyException:
-        valid = False
-    artifact.report_validity(valid)
-    raise SystemExit(0 if valid else 1)
+    for arg in args.suspect:
+        artifact = MozSignedObjectViaCLI(arg)
+        try:
+            valid = artifact.process_one_local_file()
+        except SigVerifyException:
+            valid = False
+        artifact.report_validity(valid)
+        if not valid:
+            found_bad_file = True
+    raise SystemExit(1 if found_bad_file else 0)
 
 if __name__ == "__main__":
     main(sys.argv[1:])

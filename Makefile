@@ -5,33 +5,42 @@
 #
 # All other AWS information is supplied the normal way.
 
-DEV_IMAGE_NAME=fxsv/dev
-BUILD_IMAGE_NAME=fxsv/build
-INSTANCE_NAME=fxsv_latest
+PYTHON_VERSION := 3.6
 VENV_NAME=venv
+NOW := $(shell date -u +%Y-%m-%dT%H:%M:%S)
 
-# custom build
-fxsv.zip: Dockerfile.build-environment.built
+# dev account defaults
+ECR_REPO_NAME=fx-sig-verify-dev
 
+# Defaults for docker-debug
+PRODUCTION_DEFAULT = 0	# set to 1 for skips
+VERBOSE_DEFAULT = 2	# 2 is max, 0 is quiet
+# show the details of the build (which build-kit hides by default)
+DOCKER_BUILD_OPTIONS := --progress plain
 
 .PHONY: help
 help:
-	@echo "fxsv.zip	DEFAULT target - build lambda package"
 	@echo "help		this list"
-	@echo "docker-shell	obtain shell in docker container"
-	@echo "                 with source mounted & code installed"
+	@echo "docker-shell-prod    obtain shell in production docker container"
+	@echo "docker-shell-debug   obtain shell in debug docker container"
 	@echo "docker-test	run all tests in docker container"
 	@echo ""
-	@echo "upload		upload lambda function to AWS"
-	@echo "publish		publish lambda function on AWS"
-	@echo "invoke		execute test cases on AWS"
-	@echo "tests		execute tests locally via tox"
-	@echo "docker-test      execute tests in docker image"
+	@echo "upload		upload prod container to AWS"
+	@echo "publish		publish prod container on AWS"
+	@echo "invoke		execute test cases against AWS"
+	@echo "invoke-docker    execute test cases against AWS from a"
+	@echo "                 local docker instance with RIE installed"
+	@echo "docker-debug	start local debug container"
+	@echo "docker-build-all	build all containers"
+	@echo "docker-build-prod    build production container"
+	@echo "docker-build-debug   build debug container from prod"
+	@echo "tests		execute local tests locally via tox"
+	@echo "docker-test      execute local tests in docker image"
 	@echo "populate_s3	upload test data to S3"
 	@echo ""
 	@echo "clean            remove built files"
 	@echo ""
-	@echo "docs             Generate docs locally"
+	@echo "generate-docs    Generate docs locally"
 
 
 
@@ -41,12 +50,11 @@ clean:
 	rm -f fxsv.zip
 
 .PHONY: upload
-upload: fxsv.zip
+upload: docker-build-prod
 	@echo "Using AWS credentials for $$AWS_DEFAULT_PROFILE in $$AWS_REGION"
-	aws lambda update-function-code \
-	    --region $${AWS_REGION} \
-	    --function-name hwine_ffsv_dev \
-	    --zip-file fileb://$(PWD)/fxsv.zip \
+	docker tag fxsigverify  927034868273.dkr.ecr.us-west-2.amazonaws.com/$(ECR_REPO_NAME)
+	aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin 927034868273.dkr.ecr.us-west-2.amazonaws.com ;\
+	    docker push 927034868273.dkr.ecr.us-west-2.amazonaws.com/$(ECR_REPO_NAME)
 
 .PHONY: publish
 publish: upload
@@ -55,9 +63,17 @@ publish: upload
 	    --region $${AWS_REGION} \
 	    --function-name hwine_ffsv_dev \
 	    --code-sha-256 "$$(openssl sha1 -binary -sha256 fxsv.zip | base64 | tee /dev/tty)" \
-	    --description "$$(date -u +%Y%m%dT%H%M%S)" \
+	    --description "$(NOW)" \
 
-.PHONY: invoke invoke-no-error invoke-error
+# The following targets exercise the actual lambda code, and having that
+# code interact with real AWS services. So valid credentials must be
+# applied.
+#
+# The "-docker" versions do so to the code deployed in a container with
+# the lambda Remote Interface Emulater installed
+#
+# The ones without that suffix invoke the lambda on AWS
+.PHONY: invoke invoke-no-error invoke-error invoke-docker invoke-no-error-docker invoke-error-docker
 invoke-no-error:
 	@test -n "$$S3_BUCKET" || ( echo "You must define S3_BUCKET" ; false )
 	@test -n "$$LAMBDA" || ( echo "You must define LAMBDA" ; false )
@@ -68,9 +84,24 @@ invoke-no-error:
 		--region $${AWS_REGION} \
 		--function-name $(LAMBDA) \
 		--payload "$$(sed -e 's/hwine-ffsv-dev/$(S3_BUCKET)/g' \
-		                  -e 's/1970-01-01T00:00:00/$$(date +%Y-%m-%dT%H:%M:%S)/g' \
+		                  -e 's/1970-01-01T00:00:00/$(NOW)/g' \
 				  tests/data/S3_event_template-no-error.json)" \
 		invoke_output-no-error.json ; \
+	    if test -s invoke_output-no-error.json; then \
+		jq . invoke_output-no-error.json ; \
+	    fi
+
+invoke-no-error-docker:
+	@test -n "$$S3_BUCKET" || ( echo "You must define S3_BUCKET" ; false )
+	@test -n "$$LAMBDA" || ( echo "You must define LAMBDA" ; false )
+	@rm -f invoke_output-no-error.json
+	@echo "Using AWS credentials for $$AWS_DEFAULT_PROFILE in $$AWS_REGION"
+	@echo "Should not return error (but some 'fail')"
+	curl http://localhost:9000/2015-03-31/functions/function/invocations \
+		--data "$$(sed -e 's/hwine-ffsv-dev/$(S3_BUCKET)/g' \
+		                  -e 's/1970-01-01T00:00:00/$(NOW)/g' \
+				  tests/data/S3_event_template-no-error.json)" \
+		> invoke_output-no-error.json ; \
 	    if test -s invoke_output-no-error.json; then \
 		jq . invoke_output-no-error.json ; \
 	    fi
@@ -85,26 +116,70 @@ invoke-error:
 		--region $${AWS_REGION} \
 		--function-name $(LAMBDA) \
 		--payload "$$(sed -e 's/hwine-ffsv-dev/$(S3_BUCKET)/g' \
-		                  -e 's/1970-01-01T00:00:00/$$(date +%Y-%m-%dT%H:%M:%S)/g' \
+		                  -e 's/1970-01-01T00:00:00/$(NOW)/g' \
 				  tests/data/S3_event_template-error.json)" \
 		invoke_output-error.json ; \
 	    if test -s invoke_output-error.json; then \
 		jq . invoke_output-error.json ; \
 	    fi
 
+invoke-error-docker:
+	@test -n "$$S3_BUCKET" || ( echo "You must define S3_BUCKET" ; false )
+	@test -n "$$LAMBDA" || ( echo "You must define LAMBDA" ; false )
+	@rm -f invoke_output-error.json
+	@echo "Using AWS credentials for $$AWS_DEFAULT_PROFILE in $$AWS_REGION"
+	@echo "Should not return error (but some 'fail')"
+	curl http://localhost:9000/2015-03-31/functions/function/invocations \
+		--data "$$(sed -e 's/hwine-ffsv-dev/$(S3_BUCKET)/g' \
+		                  -e 's/1970-01-01T00:00:00/$(NOW)/g' \
+				  tests/data/S3_event_template-error.json)" \
+		> invoke_output-error.json ; \
+	    if test -s invoke_output-error.json; then \
+		jq . invoke_output-error.json ; \
+	    fi
+
 invoke: invoke-no-error invoke-error
+invoke-docker: invoke-no-error-docker invoke-error-docker
 
-PHONY: docker-shell
-docker-shell: Dockerfile.dev-environment.built
-	@echo Working directory mounted at /home/fxsv
+PHONY: docker-build-prod
+docker-build-prod:
+	docker build $(DOCKER_BUILD_OPTIONS) -t fxsigverify -f Dockerfile.prod .
+
+PHONY: docker-build-debug
+docker-build-debug: docker-build-prod
+	env PRODUCTION=$(or $(PRODUCTION),$(PRODUCTION_DEFAULT)) \
+	docker build $(DOCKER_BUILD_OPTIONS) -t fxsv-debug -f Dockerfile.debug .
+
+PHONY: docker-build-all
+docker-build-all: docker-build-prod docker-build-debug
+
+# We don't make docker-debug depend on docker-build-debug, as we may
+# want several runs as we change code
+PHONY: docker-debug
+docker-debug:
 	docker run --rm -it \
-	    --volume $$PWD:/home/fxsv \
-	    --user $$(id -u):$$(id -g) \
-	    fxsv/dev:latest
+	    -e AWS_ACCESS_KEY_ID \
+	    -e AWS_REGION \
+	    -e AWS_DEFAULT_REGION \
+	    -e AWS_SECRET_ACCESS_KEY \
+	    -e AWS_SECURITY_TOKEN \
+	    -e AWS_SESSION_TOKEN \
+	    -e AWS_VAULT \
+	    -e PRODUCTION \
+	    -e SNSARN \
+	    -e VERBOSE \
+	    -p 9000:8080 \
+	    fxsv-debug
 
-PHONY: docker-test
-docker-test: Dockerfile.build-environment.built
-	docker run --rm -it --volume $PWD:/root which -a osslsigncode #fxsv/build:latest pytest tests
+PHONY: docker-shell-prod
+docker-shell-prod:
+	@echo "N.B. no environment variables set"
+	docker run --rm -it --entrypoint bash fxsigverify
+
+PHONY: docker-shell-debug
+docker-shell-debug:
+	@echo "N.B. no environment variables set"
+	docker run --rm -it --entrypoint bash fxsv-debug
 
 # idea from
 # https://stackoverflow.com/questions/23032580/reinstall-virtualenv-with-tox-when-requirements-txt-or-setup-py-changes#23039826
@@ -117,31 +192,11 @@ tests: .tox/venv.touch
 	mkdir -p $$(dirname $@)
 	touch $@
 
-Dockerfile.dev-environment.built: Dockerfile.dev-environment
-	docker build -t $(DEV_IMAGE_NAME) -f $< .
-	docker images $(DEV_IMAGE_NAME) >$@
-	test -s $@ || rm $@
-
-Dockerfile.build-environment: Dockerfile.dev-environment.built $(shell find src -name \*.py)
-	touch $@
-
-Dockerfile.build-environment.built: Dockerfile.build-environment
-	docker build -t $(BUILD_IMAGE_NAME) -f $< .
-	# get rid of anything old
-	docker rm $(INSTANCE_NAME) || true	# okay if fails
-	# retrieve the zip file
-	docker run --name $(INSTANCE_NAME) $(BUILD_IMAGE_NAME)
-	# delete old version, if any
-	rm -f fxsv.zip
-	docker cp $(INSTANCE_NAME):/tmp/fxsv.zip .
-	# docker's host (VM) likely to have wrong time (on macOS). Update it
-	touch fxsv.zip
-	docker ps -qa --filter name=$(INSTANCE_NAME) >$@
-	test -s $@ || rm $@
 
 $(VENV_NAME):
-	virtualenv --python=python2.7 $@
-	source $(VENV_NAME)/bin/activate && echo req*.txt | xargs -n1 pip install -r
+	python$(PYTHON_VERSION) -m venv  $@
+	. $(VENV_NAME)/bin/activate && pip install --upgrade pip
+	. $(VENV_NAME)/bin/activate && echo req*.txt | xargs -n1 pip install -r
 	@echo "Virtualenv created in $(VENV_NAME). You must activate before continuing."
 	@false
 
@@ -162,8 +217,8 @@ populate_s3:
 	aws s3 cp tests/data/FxSetup-87.0b2.exe "s3://$(S3_BUCKET)/FxSetup-87.0b2.exe"
 
 
-.PHONY: docs
-docs:
+.PHONY: generate-docs
+generate-docs:
 	tox -e docs
 
 # vim: noet ts=8
