@@ -16,6 +16,8 @@ before_install:
   - python --version
   - uname -a
   - lsb_release -a
+  - sudo apt-get -y install osslsigncode
+
 install:
   - pip install tox==3.15.2
   - virtualenv --version
