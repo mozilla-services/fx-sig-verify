@@ -93,8 +93,8 @@ class MozSignedObject(object):
             except ValueError:
                 cls.production_criteria = (False if production_override
                                            else True)
-            print("production criteria {} based on {}"
-                  .format(bool(cls.production_criteria), production_override))
+            print(f"production criteria {bool(cls.production_criteria)} based on {production_override}",
+                   f"VERBOSE={cls.verbose}")
 
     @classmethod
     def set_verbose(cls, verbose_override=None):
@@ -226,13 +226,13 @@ class MozSignedObject(object):
             the object
         """
         def show_output(results) -> None:
-            return
-            if results is None:
-                print("No results from osslsigncode run (likely exception)")
-            else:
-                print(f"osslsigncode exitcode: {results.returncode}\n"
-                    f"-- stderr:\n'{results.stderr}'"
-                    f"\n-- stdout\n'{results.stdout}'")
+            if MozSignedObject.verbose >= 2:
+                if results is None:
+                    print("No results from osslsigncode run (likely exception)")
+                else:
+                    print(f"osslsigncode exitcode: {results.returncode}\n"
+                        f"-- stderr:\n'{results.stderr}'"
+                        f"\n-- stdout\n'{results.stdout}'")
 
         cert_serial_number = "invalid hex data"
         with self.get_flo() as objf:
@@ -249,9 +249,9 @@ class MozSignedObject(object):
                 try:
                     results = subprocess.run(["osslsigncode", "verify", fname], universal_newlines=True,
                         stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                    show_output(results)
                     if results.returncode != 0:
                         # file is badly formed
+                        show_output(results)
                         raise SigVerifyBadSignature(f"Corrupted signature in {objf.name}: {results.returncode}")
                 except Exception as e:
                     print(f"osslsigncode exception {repr(e)}")
@@ -268,6 +268,7 @@ class MozSignedObject(object):
                 # i.e. it shouldn't occur with items uploaded to product
                 # delivery
                 if l.startswith("Calculated PE checksum:") and l.endswith("MISMATCH!!!!"):
+                    show_output(results)
                     raise SigVerifyBadSignature("Checksum Mismatch")
             else:
                 raise Exception(f"No serial in osslsigncode output: '{results.stdout}'")
