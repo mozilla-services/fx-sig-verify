@@ -93,23 +93,20 @@ class MozSignedObject(object):
             except ValueError:
                 cls.production_criteria = (False if production_override
                                            else True)
-            print("production criteria {} based on {}"
-                  .format(bool(cls.production_criteria), production_override))
+            print(f"production criteria {bool(cls.production_criteria)} based on {production_override}",
+                   f"VERBOSE={cls.verbose}")
 
     @classmethod
     def set_verbose(cls, verbose_override=None):
         cls.set_production_criteria()
-        # reset - testing issue, not production, as new class isn't created
-        cls.verbose = 0
-        if not verbose_override:
-            verbose_override = os.environ.get('VERBOSE')
+        # we only change from the default or current value if specified.
+        # verbose_override takes precedence over environment value
+        env_value = os.environ.get('VERBOSE')
+        if env_value:
+            cls.verbose = int(env_value)
         if verbose_override:
-            try:
-                cls.verbose = int(verbose_override)
-            except ValueError:
-                cls.verbose = 1 if verbose_override else 0
-            print("verbose {} based on {}".format(cls.verbose,
-                                                  verbose_override))
+            cls.verbose = verbose_override
+        print(f"verbose {cls.verbose} based on {env_value} or {verbose_override}")
 
     def __init__(self, *args, **kwargs):
         self.artifact_name: Optional[str] = None
@@ -226,13 +223,13 @@ class MozSignedObject(object):
             the object
         """
         def show_output(results) -> None:
-            return
-            if results is None:
-                print("No results from osslsigncode run (likely exception)")
-            else:
-                print(f"osslsigncode exitcode: {results.returncode}\n"
-                    f"-- stderr:\n'{results.stderr}'"
-                    f"\n-- stdout\n'{results.stdout}'")
+            if True:  # TODO: fix MozSignedObject.verbose >= 2:
+                if results is None:
+                    print("No results from osslsigncode run (likely exception)")
+                else:
+                    print(f"osslsigncode exitcode: {results.returncode}\n"
+                        f"-- stderr:\n'{results.stderr}'"
+                        f"\n-- stdout\n'{results.stdout}'")
 
         cert_serial_number = "invalid hex data"
         with self.get_flo() as objf:
@@ -249,9 +246,9 @@ class MozSignedObject(object):
                 try:
                     results = subprocess.run(["osslsigncode", "verify", fname], universal_newlines=True,
                         stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                    show_output(results)
                     if results.returncode != 0:
                         # file is badly formed
+                        show_output(results)
                         raise SigVerifyBadSignature(f"Corrupted signature in {objf.name}: {results.returncode}")
                 except Exception as e:
                     print(f"osslsigncode exception {repr(e)}")
@@ -268,8 +265,10 @@ class MozSignedObject(object):
                 # i.e. it shouldn't occur with items uploaded to product
                 # delivery
                 if l.startswith("Calculated PE checksum:") and l.endswith("MISMATCH!!!!"):
+                    show_output(results)
                     raise SigVerifyBadSignature("Checksum Mismatch")
             else:
+                show_output(results)
                 raise Exception(f"No serial in osslsigncode output: '{results.stdout}'")
 
         valid_signature = cert_serial_number in VALID_CERTS
