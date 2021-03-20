@@ -99,16 +99,14 @@ class MozSignedObject(object):
     @classmethod
     def set_verbose(cls, verbose_override=None):
         cls.set_production_criteria()
-        # reset - testing issue, not production, as new class isn't created
-        cls.verbose = 0
-        if not verbose_override:
-            verbose_override = os.environ.get('VERBOSE')
+        # we only change from the default or current value if specified.
+        # verbose_override takes precedence over environment value
+        env_value = os.environ.get('VERBOSE')
+        if env_value:
+            cls.verbose = int(env_value)
         if verbose_override:
-            try:
-                cls.verbose = int(verbose_override)
-            except ValueError:
-                cls.verbose = 1 if verbose_override else 0
-        print(f"verbose {cls.verbose} based on {verbose_override}")
+            cls.verbose = verbose_override
+        print(f"verbose {cls.verbose} based on {env_value} or {verbose_override}")
 
     def __init__(self, *args, **kwargs):
         self.artifact_name: Optional[str] = None

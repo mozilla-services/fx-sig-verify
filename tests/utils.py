@@ -113,14 +113,9 @@ def two_verbose():
     os.environ['VERBOSE'] = '2'
 
 
-def true_verbose():
-    os.environ['VERBOSE'] = 'True'
-
-
 set_verbose_true_list = [
     one_verbose,
     two_verbose,
-    true_verbose
 ]
 
 
