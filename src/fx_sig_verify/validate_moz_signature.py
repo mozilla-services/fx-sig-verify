@@ -223,7 +223,7 @@ class MozSignedObject(object):
             the object
         """
         def show_output(results) -> None:
-            if MozSignedObject.verbose >= 2:
+            if True:  # TODO: fix MozSignedObject.verbose >= 2:
                 if results is None:
                     print("No results from osslsigncode run (likely exception)")
                 else:
