@@ -108,8 +108,7 @@ class MozSignedObject(object):
                 cls.verbose = int(verbose_override)
             except ValueError:
                 cls.verbose = 1 if verbose_override else 0
-            print("verbose {} based on {}".format(cls.verbose,
-                                                  verbose_override))
+        print(f"verbose {cls.verbose} based on {verbose_override}")
 
     def __init__(self, *args, **kwargs):
         self.artifact_name: Optional[str] = None
