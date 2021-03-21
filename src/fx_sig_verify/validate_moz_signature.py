@@ -268,6 +268,7 @@ class MozSignedObject(object):
                     show_output(results)
                     raise SigVerifyBadSignature("Checksum Mismatch")
             else:
+                show_output(results)
                 raise Exception(f"No serial in osslsigncode output: '{results.stdout}'")
 
         valid_signature = cert_serial_number in VALID_CERTS
