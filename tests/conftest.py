@@ -2,7 +2,7 @@
 
 import pytest
 import os
-import utils
+from . import utils
 
 
 @pytest.fixture(scope="session", autouse=True)
