@@ -5,7 +5,7 @@ name: fx-sig-verify CI
 
 on:
   push:
-    branches: [ $default-branch, hwine/gh89-sha2-timestamp ]
+    branches: [ $default-branch, hwine/gh89-sha2-timestamp, hwine/gh89-sha2-timestamp-pr ]
   pull_request:
     branches: [ $default-branch ]
 
