@@ -58,12 +58,15 @@ upload: docker-build-prod
 
 .PHONY: publish
 publish: upload
+	@echo "Go use the console - aws cli is currently f'd up wrt lambda containers"
+	@false
 	@echo "Using AWS credentials for $$AWS_DEFAULT_PROFILE in $$AWS_REGION"
-	aws lambda publish-version \
+	which aws2
+	aws2 lambda update-function-code \
 	    --region $${AWS_REGION} \
-	    --function-name hwine_ffsv_dev \
-	    --code-sha-256 "$$(openssl sha1 -binary -sha256 fxsv.zip | base64 | tee /dev/tty)" \
-	    --description "$(NOW)" \
+	    --function-name hwine_fxsv_container \
+	    --image-uri 927034868273.dkr.ecr.us-west-2.amazonaws.com/fx-sig-verify-dev:latest \
+	    --dry-run \
 
 # The following targets exercise the actual lambda code, and having that
 # code interact with real AWS services. So valid credentials must be

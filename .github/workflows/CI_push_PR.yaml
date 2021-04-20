@@ -30,6 +30,7 @@ jobs:
         python -m pip install flake8 pytest
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
         if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+        python -m pip install -e .
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
@@ -41,3 +42,20 @@ jobs:
         VERBOSE: 2
       run: |
         pytest tests
+jobs:
+  create_commit:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+    - name: Create issue using REST API
+      run: |
+        curl --request POST \
+        --url https://api.github.com/repos/${{ github.repository }}/issues \
+        --header 'authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
+        --header 'content-type: application/json' \
+        --data '{
+          "title": "Automated issue for commit: ${{ github.sha }}",
+          "body": "This issue was automatically created by the GitHub Action workflow **${{ github.workflow }}**. \n\n The commit hash was: _${{ github.sha }}_."
+          }' \
+        --fail
