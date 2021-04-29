@@ -160,6 +160,9 @@ docker-build-all: docker-build-prod docker-build-debug
 # want several runs as we change code
 PHONY: docker-debug
 docker-debug:
+	bash -xc ' \
+	declare -p $${!AWS*} ; \
+	env VERBOSE=2 PRODUCTION=0 \
 	docker run --rm -it \
 	    -e AWS_ACCESS_KEY_ID \
 	    -e AWS_REGION \
@@ -172,7 +175,8 @@ docker-debug:
 	    -e SNSARN \
 	    -e VERBOSE \
 	    -p 9000:8080 \
-	    fxsv-debug
+	    fxsv-debug \
+	'
 
 PHONY: docker-shell-prod
 docker-shell-prod:

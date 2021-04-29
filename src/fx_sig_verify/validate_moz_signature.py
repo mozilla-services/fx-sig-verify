@@ -227,6 +227,7 @@ class MozSignedObject(object):
                 if results is None:
                     print("No results from osslsigncode run (likely exception)")
                 else:
+                    print(f"stdout {type(results.stdout)}; stderr {type(results.stderr)}")
                     print(f"osslsigncode exitcode: {results.returncode}\n"
                         f"-- stderr:\n'{results.stderr}'"
                         f"\n-- stdout\n'{results.stdout}'")
@@ -250,6 +251,8 @@ class MozSignedObject(object):
                         # file is badly formed
                         show_output(results)
                         raise SigVerifyBadSignature(f"Corrupted signature in {objf.name}: {results.returncode}")
+                    else:
+                        show_output(results)
                 except Exception as e:
                     print(f"osslsigncode exception {repr(e)}")
                     show_output(results)
@@ -261,7 +264,7 @@ class MozSignedObject(object):
                 if l.startswith("Serial : "):
                     cert_serial_number = int(l.split(":")[-1].strip(), 16)
                     break
-                # the followin situation occurs with post balrog stub installers
+                # the following situation occurs with post balrog stub installers
                 # i.e. it shouldn't occur with items uploaded to product
                 # delivery
                 if l.startswith("Calculated PE checksum:") and l.endswith("MISMATCH!!!!"):
@@ -269,7 +272,7 @@ class MozSignedObject(object):
                     raise SigVerifyBadSignature("Checksum Mismatch")
             else:
                 show_output(results)
-                raise Exception(f"No serial in osslsigncode output: '{results.stdout}'")
+                raise Exception(f"No serial in osslsigncode stdout (len {len(results.stdout)}): '{results.stdout}'")
 
         valid_signature = cert_serial_number in VALID_CERTS
         if not valid_signature:
