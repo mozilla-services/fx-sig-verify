@@ -1,7 +1,7 @@
 # manually keep in sync with Dockerfile.prod value
-ARG FUNCTION_DIR="/function"
+ARG FUNCTION_DIR="/home/app"
 
-FROM fxsigverify:latest as fxsv_rie
+FROM fxsv-buster:latest as fxsv_rie
 # Add local debug support to prod image
 
 # Include global arg in this stage of the build
@@ -12,8 +12,7 @@ RUN ls -l /entry.sh ; ls -ld ${FUNCTION_DIR} ; echo "before everything"
 # Debug environment
 # (Optional) Add Lambda Runtime Interface Emulator and use a script in the ENTRYPOINT for simpler local runs
 ADD https://github.com/aws/aws-lambda-runtime-interface-emulator/releases/latest/download/aws-lambda-rie /usr/bin/aws-lambda-rie
-RUN yum install -y git && \
-    ln -sf /var/lang/bin/python3 /usr/local/bin/python && \
+RUN apt-get install -y git && \
     chmod 755 /usr/bin/aws-lambda-rie
 RUN ls -l /entry.sh ; ls -ld ${FUNCTION_DIR} ; echo "after RIE install"
 

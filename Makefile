@@ -131,7 +131,7 @@ invoke-error-docker:
 	@test -n "$$LAMBDA" || ( echo "You must define LAMBDA" ; false )
 	@rm -f invoke_output-error.json
 	@echo "Using AWS credentials for $$AWS_DEFAULT_PROFILE in $$AWS_REGION"
-	@echo "Should not return error (but some 'fail')"
+	@echo "Should return error"
 	curl http://localhost:9000/2015-03-31/functions/function/invocations \
 		--data "$$(sed -e 's/hwine-ffsv-dev/$(S3_BUCKET)/g' \
 		                  -e 's/1970-01-01T00:00:00/$(NOW)/g' \
@@ -146,12 +146,12 @@ invoke-docker: invoke-no-error-docker invoke-error-docker
 
 PHONY: docker-build-prod
 docker-build-prod:
-	docker build $(DOCKER_BUILD_OPTIONS) -t fxsigverify -f Dockerfile.prod .
+	docker build $(DOCKER_BUILD_OPTIONS) -t fxsigverify -f Dockerfile.buster .
 
 PHONY: docker-build-debug
 docker-build-debug: docker-build-prod
 	env PRODUCTION=$(or $(PRODUCTION),$(PRODUCTION_DEFAULT)) \
-	docker build $(DOCKER_BUILD_OPTIONS) -t fxsv-debug -f Dockerfile.debug .
+	docker build $(DOCKER_BUILD_OPTIONS) -t fxsv-debug -f Dockerfile.buster.debug .
 
 PHONY: docker-build-all
 docker-build-all: docker-build-prod docker-build-debug
