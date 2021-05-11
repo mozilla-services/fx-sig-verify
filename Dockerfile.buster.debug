@@ -1,7 +1,7 @@
 # manually keep in sync with Dockerfile.prod value
 ARG FUNCTION_DIR="/home/app"
 
-FROM fxsv-buster:latest as fxsv_rie
+FROM fxsigverify:latest as fxsv_rie
 # Add local debug support to prod image
 
 # Include global arg in this stage of the build
