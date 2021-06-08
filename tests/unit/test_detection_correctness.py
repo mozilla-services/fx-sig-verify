@@ -12,6 +12,7 @@ def good_files():
         "2019-06-64bit.exe",
         "2020-05-32bit.exe",
         "FxSetup-87.0b2.exe",
+        "2021-05-signable-file.exe",
     )
     return [data_file_path + x for x in valid_sig_list]
 

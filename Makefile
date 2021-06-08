@@ -222,6 +222,7 @@ populate_s3:
 	aws s3 cp tests/data/2019-06-64bit.exe "s3://$(S3_BUCKET)/2019-06-64bit.exe"
 	aws s3 cp tests/data/2020-05-32bit.exe "s3://$(S3_BUCKET)/2020-05-32bit.exe"
 	aws s3 cp tests/data/FxSetup-87.0b2.exe "s3://$(S3_BUCKET)/FxSetup-87.0b2.exe"
+	aws s3 cp tests/data/2021-05-signable-file.exe "s3://$(S3_BUCKET)/2021-05-signable-file.exe"
 
 
 .PHONY: generate-docs
