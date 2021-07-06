@@ -37,6 +37,8 @@ repos:
   hooks:
         - id: docker-compose-check
         - id: hadolint
+          args: [ --ignore, DL3007,  # we use latest to build the debug image
+             --ignore, DL3008 ]  # we don't pin versions (yet?)
 
 - repo: https://github.com/PyCQA/bandit
   rev: 1.7.0
