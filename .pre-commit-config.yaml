@@ -29,6 +29,7 @@ repos:
   rev: 2.1.5  # or specific git tag
   hooks:
     - id: forbid-binary
+      exclude: (?x)^tests/data/.*\.exe$     # allow for test data
     - id: markdownlint # Configure in .mdlrc
     - id: shellcheck
 
@@ -44,6 +45,7 @@ repos:
   rev: 1.7.0
   hooks:
     - id: bandit
+      args: [ --baseline, .bandit-baseline.json]
 
 - repo: https://github.com/myint/docformatter
   rev: v1.4
