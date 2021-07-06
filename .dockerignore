@@ -6,7 +6,12 @@
 !entry.sh
 !src/fx_sig_verify/*.py
 !src/scripts
-#!tests
+
+# since there is only one .dockerignore file, we have to include files
+# we only want on the debug image, and remove them in the staged build
+# for prod
+!tests
+!src/*.py
 
 # now exclude what we don't need from that part
 # (last match wins)

@@ -10,20 +10,26 @@ VENV_NAME=venv
 NOW := $(shell date -u +%Y-%m-%dT%H:%M:%S)
 
 # dev account defaults
-ECR_REPO_NAME=fx-sig-verify-dev
+AWS_ACCOUNT_ID=361527076523
+ECR_REPO_NAME=fx-sig-verify
+
+# dev account defaults
+AWS_REGION_DEV := us-west-2
+AWS_PROFILE_DEV := cloudservices-aws-dev
+AWS_ACCOUNT_ID_DEV := 927034868273
+ECR_REPO_NAME_DEV := fx-sig-verify-dev
 
 # Defaults for docker-debug
 PRODUCTION_DEFAULT = 0	# set to 1 for skips
 VERBOSE_DEFAULT = 2	# 2 is max, 0 is quiet
 # show the details of the build (which build-kit hides by default)
-DOCKER_BUILD_OPTIONS := --progress plain
+# DOCKER_BUILD_OPTIONS := --progress plain
 
 .PHONY: help
 help:
 	@echo "help		this list"
 	@echo "docker-shell-prod    obtain shell in production docker container"
 	@echo "docker-shell-debug   obtain shell in debug docker container"
-	@echo "docker-test	run all tests in docker container"
 	@echo ""
 	@echo "upload		upload prod container to AWS"
 	@echo "publish		publish prod container on AWS"
@@ -35,7 +41,7 @@ help:
 	@echo "docker-build-prod    build production container"
 	@echo "docker-build-debug   build debug container from prod"
 	@echo "tests		execute local tests locally via tox"
-	@echo "docker-test      execute local tests in docker image"
+	@echo "docker-debug-tests   execute local tests in docker"
 	@echo "populate_s3	upload test data to S3"
 	@echo ""
 	@echo "clean            remove built files"
@@ -49,14 +55,17 @@ clean:
 	rm -f Dockerfile*built
 	rm -f fxsv.zip
 
-.PHONY: upload
+.PHONY: upload upload-dev
 upload: docker-build-prod
 	@echo "Using AWS credentials for $$AWS_DEFAULT_PROFILE in $$AWS_REGION"
-	docker tag fxsigverify  927034868273.dkr.ecr.us-west-2.amazonaws.com/$(ECR_REPO_NAME)
-	aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin 927034868273.dkr.ecr.us-west-2.amazonaws.com ;\
-	    docker push 927034868273.dkr.ecr.us-west-2.amazonaws.com/$(ECR_REPO_NAME)
+	docker tag fxsigverify $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(ECR_REPO_NAME)
+	aws ecr get-login-password --region $(AWS_REGION) | docker login --username AWS --password-stdin $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com
+	docker push $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(ECR_REPO_NAME)
 
-.PHONY: publish
+upload-dev:
+	$(MAKE) AWS_PROFILE=$(AWS_PROFILE_DEV) AWS_ACCOUNT_ID=$(AWS_ACCOUNT_ID_DEV) ECR_REPO_NAME=$(ECR_REPO_NAME_DEV) AWS_REGION=$(AWS_REGION_DEV) upload
+
+.PHONY: publish publish-dev
 publish: upload
 	@echo "Go use the console - aws cli is currently f'd up wrt lambda containers"
 	@false
@@ -67,6 +76,9 @@ publish: upload
 	    --function-name hwine_fxsv_container \
 	    --image-uri 927034868273.dkr.ecr.us-west-2.amazonaws.com/fx-sig-verify-dev:latest \
 	    --dry-run \
+
+publish-dev:
+	$(MAKE) AWS_ACCOUNT_ID=$(AWS_ACCOUNT_ID_DEV) ECR_REPO_NAME=$(ECR_REPO_NAME_DEV) publish
 
 # The following targets exercise the actual lambda code, and having that
 # code interact with real AWS services. So valid credentials must be
@@ -187,6 +199,10 @@ PHONY: docker-shell-debug
 docker-shell-debug:
 	@echo "N.B. no environment variables set"
 	docker run --rm -it --entrypoint bash fxsv-debug
+
+PHONY: docker-debug-tests
+docker-debug-tests:
+	docker run -it --rm --entrypoint pytest fxsv-debug:latest tests
 
 # idea from
 # https://stackoverflow.com/questions/23032580/reinstall-virtualenv-with-tox-when-requirements-txt-or-setup-py-changes#23039826
