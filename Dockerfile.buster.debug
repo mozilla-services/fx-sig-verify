@@ -12,7 +12,9 @@ WORKDIR ${FUNCTION_DIR}
 # Debug environment
 # (Optional) Add Lambda Runtime Interface Emulator and use a script in the ENTRYPOINT for simpler local runs
 ADD https://github.com/aws/aws-lambda-runtime-interface-emulator/releases/latest/download/aws-lambda-rie /usr/bin/aws-lambda-rie
-RUN apt-get install --no-install-recommends -y git \
+# we need git, but we've already purged the update info, so update again
+RUN apt-get update \
+    && apt-get install --no-install-recommends -y git \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists \
     && chmod 755 /usr/bin/aws-lambda-rie

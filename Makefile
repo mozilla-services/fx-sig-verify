@@ -202,7 +202,7 @@ docker-shell-debug:
 
 PHONY: docker-debug-tests
 docker-debug-tests:
-	docker run -it --rm --entrypoint pytest fxsv-debug:latest tests
+	docker run --rm --entrypoint pytest fxsv-debug:latest tests
 
 # idea from
 # https://stackoverflow.com/questions/23032580/reinstall-virtualenv-with-tox-when-requirements-txt-or-setup-py-changes#23039826

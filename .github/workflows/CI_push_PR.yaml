@@ -42,3 +42,8 @@ jobs:
         VERBOSE: 2
       run: |
         pytest tests
+    - name: Attempt docker image build
+      run: |
+        make docker-build-prod
+        make docker-build-debug
+        make docker-debug-tests
