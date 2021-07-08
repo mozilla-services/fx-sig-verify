@@ -10,12 +10,27 @@
 	"dockerFile": "../Dockerfile.dev-environment",
 
 	// Set *default* container specific settings.json values on container create.
-	"settings": { 
+	"settings": {
 		"terminal.integrated.shell.linux": null
 	},
 
 	// Add the IDs of extensions you want installed when the container is created.
-	"extensions": []
+	// "extensions": [],
+
+	// Use the dockerfile's CMD, not vs-code
+	//"overrideCommand": false,
+
+    // and ensure we have a pty
+    // "runArgs": ["--interactive", "--tty" ],
+
+	// Set default user to be non-root. Also makes uid/gid match local user
+	"containerUser": "fake",
+
+	// Add the container user's bindir to the path
+	"remoteEnv": {"PATH": "/home/fake/.local/bin:${containerEnv:PATH}"},
+
+	// mount in the same place it would from cli
+	//"workspaceMount": "source=${localWorkspaceFolder},target=/home/fxsv",
 
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [],

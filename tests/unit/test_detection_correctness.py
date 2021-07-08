@@ -1,10 +1,8 @@
-
 import pytest
 from fx_sig_verify.cli import main
 
 
-@pytest.fixture()
-def successful_invocations():
+def good_files():
     data_file_path = "tests/data/"
     valid_sig_list = (
         "32bit.exe",
@@ -12,22 +10,24 @@ def successful_invocations():
         "32bit_sha1.exe",
         "2019-06-64bit.exe",
         "2020-05-32bit.exe",
+        "FxStub-87.0b2.exe",
+        "2021-05-signable-file.exe",
     )
-    return map(lambda x: [data_file_path + x], valid_sig_list)
+    return [data_file_path + x for x in valid_sig_list]
 
 
-def test_good_signature(successful_invocations):
+@pytest.mark.parametrize("successful_invocation", good_files())
+def test_good_signature(successful_invocation):
     # GIVEN: a command line that should succeed
-    for cmd_line in successful_invocations:
-        # WHEN: main is called with that command line
-        with pytest.raises(SystemExit) as e:
-            main(cmd_line)
-        # THEN: it will complete successfully
-        assert e.value.code == 0
+    cmd_line = [successful_invocation]
+    # WHEN: main is called for that file
+    with pytest.raises(SystemExit) as e:
+        main(cmd_line)
+    # THEN: it will complete successfully
+    assert e.value.code == 0
 
 
-@pytest.fixture()
-def invalid_invocations():
+def bad_files():
     data_file_path = "tests/data/"
     invalid_sig_list = (
         "PostBalrogStub.exe",
@@ -36,14 +36,15 @@ def invalid_invocations():
         "signtool.exe",
         "vswriter.exe",
     )
-    return map(lambda x: [data_file_path + x], invalid_sig_list)
+    return [data_file_path + x for x in invalid_sig_list]
 
 
-def test_bad_signature(invalid_invocations):
+@pytest.mark.parametrize("invalid_file", bad_files())
+def test_bad_signature(invalid_file):
     # GIVEN: a command line that should fail in the arg parser
-    for cmd_line in invalid_invocations:
-        # WHEN: main is called with that command line
-        with pytest.raises(SystemExit) as e:
-            main(cmd_line)
-        # THEN: it will fail with exit code 1
-        assert e.value.code == 1
+    cmd_line = [invalid_file]
+    # WHEN: main is called with that file name
+    with pytest.raises(SystemExit) as e:
+        main(cmd_line)
+    # THEN: it will fail with exit code 1
+    assert e.value.code == 1

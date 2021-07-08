@@ -1,4 +1,3 @@
-# these need to be installed in the lib subdir
-M2Crypto==0.26.0
-fleece==0.15.1
-pyasn1==0.2.3
+fleece  ##  ==0.15.1
+# must not install fx-sig-verify here, as that breaks CI
+# -e .  # fx-sig-verify itself

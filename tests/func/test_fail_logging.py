@@ -18,7 +18,7 @@ def disable_production_filtering():
 @mock_s3
 @mock_sns
 @mock_sqs
-@pytest.mark.parametrize('set_verbose_false', u.set_verbose_false_list[:1])
+@pytest.mark.parametrize('set_verbose_false', u.set_verbose_false_list)
 @pytest.mark.parametrize('fname', u.bad_file_names_list)
 def test_fail_message_when_not_verbose(set_verbose_false, fname):
     queue = u.setup_aws_mocks()
@@ -47,7 +47,7 @@ def test_fail_message_when_not_verbose(set_verbose_false, fname):
 @mock_s3
 @mock_sns
 @mock_sqs
-@pytest.mark.parametrize('set_verbose_true', u.set_verbose_true_list[:1])
+@pytest.mark.parametrize('set_verbose_true', u.set_verbose_true_list)
 @pytest.mark.parametrize('fname', u.bad_file_names_list)
 def test_fail_message_when_verbose(set_verbose_true, fname):
     queue = u.setup_aws_mocks()

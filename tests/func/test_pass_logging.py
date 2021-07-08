@@ -12,7 +12,7 @@ from fx_sig_verify.validate_moz_signature import (lambda_handler, )  # noqa: E40
 @mock_sns
 @mock_sqs
 @pytest.mark.parametrize('fname', u.good_file_names_list)
-@pytest.mark.parametrize('setter', u.set_verbose_false_list[:1])
+@pytest.mark.parametrize('setter', u.set_verbose_false_list)
 def test_pass_no_message_when_no_verbose(setter, fname):
     queue = u.setup_aws_mocks()
     bucket = u.create_bucket()
@@ -44,7 +44,7 @@ def test_pass_no_message_when_no_verbose(setter, fname):
 @mock_sns
 @mock_sqs
 @pytest.mark.parametrize('fname', u.good_file_names_list)
-@pytest.mark.parametrize('setter', u.set_verbose_true_list[:1])
+@pytest.mark.parametrize('setter', u.set_verbose_true_list)
 def test_pass_message_when_verbose(setter, fname):
     queue = u.setup_aws_mocks()
     bucket = u.create_bucket()

@@ -1,4 +1,4 @@
-from __future__ import print_function
+
 from fleece import boto3
 from fleece.xray import (monkey_patch_botocore_for_xray,
                          trace_xray_subsegment)
@@ -7,17 +7,18 @@ from io import BytesIO
 import datetime
 import json
 import os
+import subprocess
+import tempfile
 import time
-import urllib
-import urllib2
+from typing import Optional
+import urllib.request, urllib.parse, urllib.error
+import urllib.request, urllib.error, urllib.parse
 
 import fx_sig_verify
-from verify_sigs import auth_data
-from verify_sigs import fingerprint
-from verify_sigs import pecoff_blob
 
 # Certificate serial numbers we consider valid
 VALID_CERTS = [
+    16100418757095927544930732507868760829,  # new cert bug 1703321
     18436330001563694742140401266315695261,  # new cert bug 1634577
     14785325618211854949562096782187497067,  # new cert bug 1554767
     16384756435581673599510349952793916302,  # new cert bug 1366012
@@ -68,21 +69,6 @@ def debug(*args):
             print("{}: {}".format(now, msg))
 
 
-# EVIL EVIL -- Monkeypatch to extend accessor
-# This patch is part of the google code, and must be set before calling any of
-# the analysis routines. See the verify_sigs directory for license information.
-# TODO(user): This was submitted to pyasn1. Remove when we have it back.
-def F(self, idx):
-    if type(idx) is int:
-        return self.getComponentByPosition(idx)
-    else:
-        return self.getComponentByName(idx)
-from pyasn1.type import univ  # noqa: E402 pylint: disable-msg=C6204,C6203
-univ.SequenceAndSetBase.__getitem__ = F
-del F, univ
-# EVIL EVIL
-
-
 class MozSignedObject(object):
     """
     Retain the state and context of the object we're checking. This includes
@@ -108,26 +94,23 @@ class MozSignedObject(object):
             except ValueError:
                 cls.production_criteria = (False if production_override
                                            else True)
-            print("production criteria {} based on {}"
-                  .format(bool(cls.production_criteria), production_override))
+            print(f"production criteria {bool(cls.production_criteria)} based on {production_override}",
+                   f"VERBOSE={cls.verbose}")
 
     @classmethod
     def set_verbose(cls, verbose_override=None):
         cls.set_production_criteria()
-        # reset - testing issue, not production, as new class isn't created
-        cls.verbose = 0
-        if not verbose_override:
-            verbose_override = os.environ.get('VERBOSE')
+        # we only change from the default or current value if specified.
+        # verbose_override takes precedence over environment value
+        env_value = os.environ.get('VERBOSE')
+        if env_value:
+            cls.verbose = int(env_value)
         if verbose_override:
-            try:
-                cls.verbose = int(verbose_override)
-            except ValueError:
-                cls.verbose = 1 if verbose_override else 0
-            print("verbose {} based on {}".format(cls.verbose,
-                                                  verbose_override))
+            cls.verbose = verbose_override
+        print(f"verbose {cls.verbose} based on {env_value} or {verbose_override}")
 
     def __init__(self, *args, **kwargs):
-        self.artifact_name = None
+        self.artifact_name: Optional[str] = None
         self.object_status = None
         self.errors = []
         self.messages = []
@@ -170,16 +153,16 @@ class MozSignedObject(object):
         lines.append("{} for {}".format(self.get_status(), self.artifact_name))
         if self.errors:
             lines.append("errors:")
-            lines.extend(map(indent, self.errors))
+            lines.extend(list(map(indent, self.errors)))
         if self.messages:
             lines.append("other info:")
-            lines.extend(map(indent, self.messages))
+            lines.extend(list(map(indent, self.messages)))
         return '\n'.join(lines)
 
     def report_validity(self, valid):
         raise ValueError("report_validity not implemented")
 
-    def get_flo(self, valid):
+    def get_flo(self, valid=None)-> BytesIO:
         raise ValueError("get_flo not implemented")
 
     def show_file_stats(self, objf):
@@ -219,7 +202,7 @@ class MozSignedObject(object):
             # ignore dependent & try builds, which is based on the first part
             # of the key (in S3 terms), which is the "path" element of an S3
             # url
-            url = urllib2.urlparse.urlparse(self.artifact_name)
+            url = urllib.parse.urlparse(str(self.artifact_name))
             key = url.path
             if key.startswith(PRODUCTION_KEY_PREFIX_EXCLUSIONS):
                 self.add_message("Excluded from validation by key prefix")
@@ -228,104 +211,92 @@ class MozSignedObject(object):
 
     @trace_xray_subsegment()
     def check_exe(self):
+        return self.check_exe_new()
+
+    def check_exe_new(self):
         """
         Determine if the contents of `objf` are a valid Windows executable
         signed by Mozilla's Authenticode certificate.
-
-        This code mostly lifted from
-            src/fx_sig_verify/verify_sigs/print_pe_certs.py
-
-        with print statements removed :)
 
         :returns boolean: True if object has passed all tests.
 
         :raises SigVerifyException: if any specific problem is identified in
             the object
         """
-        objf = self.get_flo()
-        self.show_file_stats(objf)
-        try:
-            fingerprinter = fingerprint.Fingerprinter(objf)
-            is_pecoff = fingerprinter.EvalPecoff()
-            fingerprinter.EvalGeneric()
-            results = fingerprinter.HashIt()
-        except Exception as e:
-            raise SigVerifyNoSignature(e)
-        finally:
-            objf.close()
+        def show_output(results) -> None:
+            if True:  # TODO: fix MozSignedObject.verbose >= 2:
+                if results is None:
+                    print("No results from osslsigncode run (likely exception)")
+                else:
+                    print(f"stdout {type(results.stdout)}; stderr {type(results.stderr)}")
+                    print(f"osslsigncode exitcode: {results.returncode}\n"
+                        f"-- stderr:\n'{results.stderr}'"
+                        f"\n-- stdout\n'{results.stdout}'")
 
-        if not is_pecoff:
-            msg = 'This is not a PE/COFF binary. Exiting.'
-            print(msg)
-            raise SigVerifyNoSignature(msg)
-
-        signed_pecoffs = [x for x in results if x['name'] == 'pecoff' and
-                          'SignedData' in x]
-
-        if not signed_pecoffs:
-            msg = 'This PE/COFF binary has no signature. Exiting.'
-            raise SigVerifyNoSignature('This PE/COFF binary has no signature. '
-                                       'Exiting.')
-
-        # TODO - can there be multiple signed_pecoffs?
-        signed_pecoff = signed_pecoffs[0]
-        if len(signed_pecoffs) > 1:
-            msg = ("Found {:d} signed pecoffs. Only processing first "
-                   "one.".format(len(signed_pecoffs)))
-            self.add_message(msg)
-            if self.verbose:
-                print(msg)
-
-        signed_datas = signed_pecoff['SignedData']
-        # There may be multiple of these, if the windows binary was signed
-        # multiple times, e.g. by different entities. Each of them adds a
-        # complete SignedData blob to the binary.
-        # TODO(user): Process all instances
-        signed_data = signed_datas[0]
-        if self.verbose and len(signed_datas) > 1:
-            msg = ("Found {:d} signed datas. Only processing first "
-                   "one.".format(len(signed_datas)))
-            self.add_message(msg)
-            if self.verbose:
-                print(msg)
-            msg = "Multiple Signatures"
-            raise SigVerifyBadSignature(msg)
-
-        blob = pecoff_blob.PecoffBlob(signed_data)
-
-        auth = auth_data.AuthData(blob.getCertificateBlob())
-        content_hasher_name = auth.digest_algorithm().name
-        computed_content_hash = signed_pecoff[content_hasher_name]
-
-        try:
-            auth.ValidateAsn1()
-            auth.ValidateHashes(computed_content_hash)
-            auth.ValidateSignatures()
-            auth.ValidateCertChains(time.gmtime())
-        except auth_data.Asn1Error as e:
-            if auth.openssl_error:
-                msg = 'OpenSSL Errors:\n%s' % auth.openssl_error
-                self.add_error(msg)
+        cert_serial_number = "invalid hex data"
+        with self.get_flo() as objf:
+            self.show_file_stats(objf)
+            # shelling out means we need a real file on disk, so create one
+            with tempfile.NamedTemporaryFile(mode="w+b") as real_file:
+                print(f"real_file: {dir(real_file)}\n{repr(real_file)}")
+                print(f"objf: {dir(objf)}\n{repr(objf)}")
+                fname = getattr(real_file, "name", "unknown file name")
+                real_file.write(objf.read())
+                real_file.flush()
+                real_file.seek(0, 0)
+                results = None      # needed for linter
+                try:
+                    results = subprocess.run(["osslsigncode", "verify", fname], universal_newlines=True,
+                        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                    if results.returncode != 0:
+                        # file is badly formed
+                        show_output(results)
+                        raise SigVerifyBadSignature(f"Corrupted signature in {objf.name}: {results.returncode}")
+                    else:
+                        show_output(results)
+                except Exception as e:
+                    print(f"osslsigncode exception {repr(e)}")
+                    show_output(results)
+                    raise SigVerifyNoSignature
+            # parse to get mozilla signature
+            for l in [line.strip() for line in results.stdout.splitlines()]:
+                # first "Serial" line is for the signature, rest are
+                # certificates
+                if l.startswith("Serial : "):
+                    cert_serial_number = int(l.split(":")[-1].strip(), 16)
+                    break
+                # the following situation occurs with post balrog stub installers
+                # i.e. it shouldn't occur with items uploaded to product
+                # delivery
+                if l.startswith("Calculated PE checksum:") and l.endswith("MISMATCH!!!!"):
+                    show_output(results)
+                    raise SigVerifyBadSignature("Checksum Mismatch")
             else:
-                msg = 'Asn1Error: {}'.format(str(e))
-            raise SigVerifyBadSignature(msg)
+                show_output(results)
+                raise Exception(f"No serial in osslsigncode stdout (len {len(results.stdout)}): '{results.stdout}'")
 
-        # TODO - validate if this is okay for now.
-        # base validity on some combo of auth fields.
-
-        # signing_cert_id is a tuple with a last element being the serial
-        # number of the certificate. That is a known quantity for our products.
-        cert_serial_number = auth.signing_cert_id[-1]
-        valid_signature = (auth.has_countersignature and (cert_serial_number in
-                                                          VALID_CERTS))
+        valid_signature = cert_serial_number in VALID_CERTS
         if not valid_signature:
             raise SigVerifyNonMozSignature
         return valid_signature
 
 
+class BytesIOWithName(BytesIO):
+    """
+    BytesIOWithName - keep track of object's orgininal name
+
+    For better error messages, we want to pass along the orginal name of the object.
+
+    Args:
+        original_name (str): name human will recognize
+    """
+    def __init__(self, *args, original_name:str=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.original_name = original_name or "no-name-supplied"
+
 class MozSignedObjectViaLambda(MozSignedObject):
     def __init__(self, bucket=None, key=None, *args, **kwargs):
-        super(type(self), self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.bucket_name = bucket
         self.key_name = key
         self.s3_wait_time = 0
@@ -391,11 +362,11 @@ class MozSignedObjectViaLambda(MozSignedObject):
     def get_flo(self):
         s3_client = boto3.client('s3')
         debug("in get_flo")
+        start_waiting = time.time()
         try:
             # Make sure the object is really available taken from
             #   https://blog.rackspace.com/the-devnull-s3-bucket-hacking-with-aws-lambda-and-python
             # Don't use defaults, though -- that's 100 sec during testing!
-            start_waiting = time.time()
             waiter = s3_client.get_waiter('object_exists')
             waiter.wait(Bucket=self.bucket_name, Key=self.key_name,
                         WaiterConfig={'Delay': 3, 'MaxAttempts': 3})
@@ -419,7 +390,7 @@ class MozSignedObjectViaLambda(MozSignedObject):
             print(msg)
             raise SigVerifyTooBig(msg)
         debug("before body read")
-        flo = BytesIO(result['Body'].read())
+        flo = BytesIOWithName(result['Body'].read(), original_name=self.key_name)
         debug("after read() flo={}".format(type(flo)))
         return flo
 
@@ -562,7 +533,8 @@ def artifact_to_check_via_s3(lambda_event_record):
     bucket_name = lambda_event_record['s3']['bucket']['name']
     key_name = lambda_event_record['s3']['object']['key']
     # issue #14 - the below decode majik is from AWS sample code.
-    real_key_name = urllib.unquote_plus(key_name.encode('utf8'))
+
+    real_key_name = urllib.parse.unquote_plus(key_name)
     obj = MozSignedObjectViaLambda(bucket_name, real_key_name)
     return obj
 
@@ -588,6 +560,7 @@ def lambda_handler(event, context):
                 'request_id': context.aws_request_id,
                 }
     results = []
+    had_S3_error = False
     for record in unpacked_s3_events(event, response):
         artifact = artifact_to_check_via_s3(record)
         try:
@@ -628,11 +601,21 @@ def lambda_handler(event, context):
             artifact.add_error("app failure 2: {}".format(str(e)))
         artifact.report_validity()
         results.append(artifact.summary())
+        had_S3_error = any((had_S3_error, artifact.had_s3_error))
     response['results'] = results
     # always output response to CloudWatch (issue #17)
     # in json format
-    print(json.dumps(response))
+    # from contextlib import redirect_stdout
+    # import sys
+    # with redirect_stdout(sys.stderr):
+    #     print(json.dumps(response))
     # AWS will retry for us if we fail. So let's do that on an S3 error.
-    if artifact.had_s3_error:
+    if had_S3_error:
+        # make best effort to get debug info. seems to get lost in container
+        # version of lambda
+        # TODO: delete flush if it doesn't help with error message
+        import sys
+        sys.stderr.flush()
+        sys.stdout.flush()
         raise IOError("S3 error, try again")
     return response

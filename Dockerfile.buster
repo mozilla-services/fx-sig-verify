@@ -1,0 +1,75 @@
+# Define global args
+ARG FUNCTION_DIR="/home/app"
+ARG RUNTIME_VERSION="3.6"
+ARG DISTRO_VERSION="buster"
+
+# Stage 1 - bundle base image + runtime
+# Grab a fresh copy of the image and install GCC
+FROM python:${RUNTIME_VERSION}-slim-${DISTRO_VERSION} AS python-base
+# Install aws-lambda-cpp build dependencies
+RUN apt-get update ; \
+    apt-get install -y \
+        --no-install-recommends \
+        osslsigncode \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists
+
+# Stage 2 - build function and dependencies
+FROM python-base AS build-image
+
+# Include global args in this stage of the build
+ARG FUNCTION_DIR
+ARG RUNTIME_VERSION
+
+# Create function directory
+RUN mkdir -p ${FUNCTION_DIR}
+WORKDIR ${FUNCTION_DIR}
+
+# Install Lambda Runtime Interface Client for Python
+RUN python${RUNTIME_VERSION} -m pip install --no-cache-dir awslambdaric --target ${FUNCTION_DIR}
+
+# Copy handler function
+COPY . ${FUNCTION_DIR}
+# remove tests from prod image - they're readded in debug image
+# (only one .dockerignore file allowed)
+RUN rm -rf ${FUNCTION_DIR}/tests ${FUNCTION_DIR}/src/*.py
+
+# make sure our modules are found
+ENV PYTHONPATH=${FUNCTION_DIR}
+
+# Install the function's dependencies
+RUN pwd ; ls ; \
+    "python${RUNTIME_VERSION}" -m pip install --no-cache-dir \
+        --target "${FUNCTION_DIR}" \
+        -r requirements.txt \
+        ; \
+# For reasons I don't understand, the 'pip install -e' scenario chokes
+# on the '--target' option accepted by the other installs. So keep
+# separate
+    "python${RUNTIME_VERSION}" -m pip install --no-cache-dir \
+        -e . \
+        ; \
+    # byte compile everything
+    "python${RUNTIME_VERSION}" -m compileall ; \
+        # stdlib when no directories supplied
+    "python${RUNTIME_VERSION}" -m compileall \
+        "${WORKDIR}" \
+        ./src
+
+# Stage 3 - final runtime image
+# Grab a fresh copy of the Python image
+FROM python-base
+# Include global arg in this stage of the build
+ARG FUNCTION_DIR
+ARG RUNTIME_VERSION
+
+# Set working directory to function root directory
+WORKDIR ${FUNCTION_DIR}
+# make sure our modules are found
+ENV PYTHONPATH=${FUNCTION_DIR}:${FUNCTION_DIR}/src
+# Copy in the built dependencies
+COPY --from=build-image ${FUNCTION_DIR} ${FUNCTION_DIR}
+
+# Production environment
+ENTRYPOINT [ "python", "-m", "awslambdaric" ]
+CMD [ "fx_sig_verify.validate_moz_signature.lambda_handler" ]

@@ -28,6 +28,7 @@ def test_always_log_output_issue_17(setter, fname, capsys):
     out, err = capsys.readouterr()
     # put useful information in failure output
     print("response: '{}'".format(results))
+    print(f"stdout:\n{out}\n\nstderr:\n{err}")
     assert out != ''
     assert err == ''
 
@@ -48,4 +49,4 @@ def test_raise_exception_on_S3_error():
     with pytest.raises(IOError):
         results = lambda_handler(event, u.dummy_context)
     # and function should not have returned
-    assert 'results' not in locals().keys()
+    assert 'results' not in list(locals().keys())

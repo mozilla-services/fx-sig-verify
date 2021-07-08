@@ -1,15 +1,22 @@
 # just include what little we want
 *
-!*.rst
+#!*.rst
 !requirements*
 !setup.py
-!src
+!entry.sh
+!src/fx_sig_verify/*.py
+!src/scripts
+
+# since there is only one .dockerignore file, we have to include files
+# we only want on the debug image, and remove them in the staged build
+# for prod
 !tests
+!src/*.py
 
 # now exclude what we don't need from that part
 # (last match wins)
 # Do not copy over file we know to be platform specific
-src/lib
+#src/lib
 **/*.egg-info
 
 # we want a clean build

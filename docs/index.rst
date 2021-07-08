@@ -10,6 +10,7 @@ Contents
    installation
    installation-on-aws.rst
    usage
+   testing
    reference/index
    contributing
    authors

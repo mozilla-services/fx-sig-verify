@@ -16,9 +16,11 @@ include CONTRIBUTING.rst
 include LICENSE
 include README.rst
 
+include entry.sh
+
 include tox.ini .travis.yml appveyor.yml
 include requirements*.txt
-include Makefile Dockerfile.build-environment Dockerfile.dev-environment .dockerignore
+include Makefile .dockerignore Dockerfile.*
 include CODE_OF_CONDUCT.md
 
-global-exclude *.py[cod] __pycache__ *.so *.dylib .vscode .devcontainer*
+global-exclude *.py[cod] __pycache__ *.so *.dylib .vscode .devcontainer/devcontainer.json
