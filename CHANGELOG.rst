@@ -1,10 +1,25 @@
 Changelog
 =========
+`0.6.0`__
+-----------------------------------------
+__ https://github.com/mozilla-services/fx-sig-verify/tree/v0.6.0
+
+*Note: v0.5.x was taken by some abandoned work, so skipped to v0.6.0*
+
+- Update for new Authenticode certificate `bug 1703321`__
+- Fix rejection of new timestamp format `issue 89`__
+- Update to Python 3.6 `issue 55`__
+
+__ https://bugzilla.mozilla.org/show_bug.cgi?id=1703321
+__ https://github.com/mozilla-services/fx-sig-verify/issues/89
+__ https://github.com/mozilla-services/fx-sig-verify/issues/55
+
 `0.4.10`__
 -----------------------------------------
 __ https://github.com/mozilla-services/fx-sig-verify/tree/v0.4.10
 
 - Update for new Authenticode certificate `bug 1634577`__
+__ https://bugzilla.mozilla.org/show_bug.cgi?id=1634577
 
 `0.4.9`__
 -----------------------------------------
@@ -298,5 +313,3 @@ __ https://bugzilla.mozilla.org/show_bug.cgi?id=1366012
 -----------------------------------------
 
 - Initial deployment for staging.
-
-
