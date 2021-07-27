@@ -31,7 +31,8 @@ help:
 	@echo "docker-shell-prod    obtain shell in production docker container"
 	@echo "docker-shell-debug   obtain shell in debug docker container"
 	@echo ""
-	@echo "upload		upload prod container to AWS"
+	@echo "upload		upload prod container to AWS prod account"
+	@echo "upload-dev	upload prod container to AWS dev account"
 	@echo "publish		publish prod container on AWS"
 	@echo "invoke		execute test cases against AWS"
 	@echo "invoke-docker    execute test cases against AWS from a"
@@ -55,8 +56,10 @@ clean:
 	rm -f Dockerfile*built
 	rm -f fxsv.zip
 
+# upload shouldn't rebuild the container -- we already tested locally.
+# (you did test locally first, didn't you?)
 .PHONY: upload upload-dev
-upload: docker-build-prod
+upload:
 	@echo "Using AWS credentials for $$AWS_DEFAULT_PROFILE in $$AWS_REGION"
 	docker tag fxsigverify $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(ECR_REPO_NAME)
 	aws ecr get-login-password --region $(AWS_REGION) | docker login --username AWS --password-stdin $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com

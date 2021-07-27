@@ -1,5 +1,14 @@
 Changelog
 =========
+`0.6.1`__
+-----------------------------------------
+__ https://github.com/mozilla-services/fx-sig-verify/tree/v0.6.1
+
+- Fix missing app log data `issue 102`__
+- Clean up packaging
+
+__ https://github.com/mozilla-services/fx-sig-verify/issues/102
+
 `0.6.0`__
 -----------------------------------------
 __ https://github.com/mozilla-services/fx-sig-verify/tree/v0.6.0
