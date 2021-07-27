@@ -46,6 +46,7 @@ repos:
   hooks:
     - id: bandit
       args: [ --baseline, .bandit-baseline.json]
+      exclude: tests/
 
 - repo: https://github.com/myint/docformatter
   rev: v1.4
