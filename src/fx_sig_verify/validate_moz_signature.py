@@ -1,13 +1,12 @@
-
 from fleece import boto3
-from fleece.xray import (monkey_patch_botocore_for_xray,
-                         trace_xray_subsegment)
+from fleece.xray import monkey_patch_botocore_for_xray, trace_xray_subsegment
+
 # import boto3
 from io import BytesIO
 import datetime
 import json
 import os
-import subprocess
+import subprocess  # nosec  bandit complains otherwise
 import tempfile
 import time
 from typing import Optional
@@ -30,15 +29,13 @@ VALID_CERTS = [
 # handled by the S3 invoking function, but now other consumers want more
 # extensions, so we filter here. See
 # https://github.com/mozilla-services/fx-sig-verify/issues/29
-PRODUCTION_EXTENSIONS = (
-    '.exe',
-)
+PRODUCTION_EXTENSIONS = (".exe",)
 
 # The installers are consistently named. Anything else (as of this writing) is
 # some internal tooling that is not distributed to end users.
 PRODUCTION_PREFIXES = (
-    "Firefox",      # used for Beta & GA releases
-    "firefox",      # used for nightly & dep builds
+    "Firefox",  # used for Beta & GA releases
+    "firefox",  # used for nightly & dep builds
 )
 
 # Now that we are handed _all_ the uploads, we do not want to examine try & dep
@@ -66,12 +63,11 @@ def debug(*args):
     if MozSignedObject.verbose >= 2:
         now = datetime.datetime.utcnow().isoformat()
         for msg in args:
-            print("{}: {}".format(now, msg))
+            print(f"{now}: {msg}")
 
 
-class MozSignedObject(object):
-    """
-    Retain the state and context of the object we're checking. This includes
+class MozSignedObject:
+    """Retain the state and context of the object we're checking. This includes
     the name of the object and the final status.
 
     Sub class for different conventions on name and status reporting.
@@ -86,23 +82,24 @@ class MozSignedObject(object):
         # reset - testing issue, not production, as new class isn't created
         cls.production_criteria = True
         if production_override is None:
-            production_override = os.environ.get('PRODUCTION')
-            print('PRODUCTION={}'.format(production_override))
+            production_override = os.environ.get("PRODUCTION")
+            print(f"PRODUCTION={production_override}")
         if production_override is not None:
             try:
                 cls.production_criteria = int(production_override)
             except ValueError:
-                cls.production_criteria = (False if production_override
-                                           else True)
-            print(f"production criteria {bool(cls.production_criteria)} based on {production_override}",
-                   f"VERBOSE={cls.verbose}")
+                cls.production_criteria = False if production_override else True
+            print(
+                f"production criteria {bool(cls.production_criteria)} based on {production_override}",
+                f"VERBOSE={cls.verbose}",
+            )
 
     @classmethod
     def set_verbose(cls, verbose_override=None):
         cls.set_production_criteria()
         # we only change from the default or current value if specified.
         # verbose_override takes precedence over environment value
-        env_value = os.environ.get('VERBOSE')
+        env_value = os.environ.get("VERBOSE")
         if env_value:
             cls.verbose = int(env_value)
         if verbose_override:
@@ -119,13 +116,13 @@ class MozSignedObject(object):
 
     def set_status(self, new_status, only_if_unset=False):
         if self.object_status and only_if_unset:
-            debug("ignoring '{}', already '{}'".format(new_status,
-                                                       self.object_status))
+            debug(f"ignoring '{new_status}', already '{self.object_status}'")
             return  # # Early Exit
         if self.object_status and not only_if_unset:
             #  changing -- keep track
-            msg = ("changing status from '{}' to '{}'"
-                   .format(self.object_status, new_status))
+            msg = "changing status from '{}' to '{}'".format(
+                self.object_status, new_status
+            )
             debug(msg)
             self.add_message(msg)
         self.object_status = new_status
@@ -136,7 +133,8 @@ class MozSignedObject(object):
         return self.object_status
 
     def as_dict(self):
-        "handy method to reference various instance vars in format() calls"
+        """handy method to reference various instance vars in format()
+        calls."""
         return self.__dict__
 
     def add_error(self, *args):
@@ -146,23 +144,23 @@ class MozSignedObject(object):
         self.messages.extend(args)
 
     def format_message(self):
-
         def indent(s):
-            return '    ' + str(s)
+            return "    " + str(s)
+
         lines = []
-        lines.append("{} for {}".format(self.get_status(), self.artifact_name))
+        lines.append(f"{self.get_status()} for {self.artifact_name}")
         if self.errors:
             lines.append("errors:")
             lines.extend(list(map(indent, self.errors)))
         if self.messages:
             lines.append("other info:")
             lines.extend(list(map(indent, self.messages)))
-        return '\n'.join(lines)
+        return "\n".join(lines)
 
     def report_validity(self, valid):
         raise ValueError("report_validity not implemented")
 
-    def get_flo(self, valid=None)-> BytesIO:
+    def get_flo(self, valid=None) -> BytesIO:
         raise ValueError("get_flo not implemented")
 
     def show_file_stats(self, objf):
@@ -171,12 +169,12 @@ class MozSignedObject(object):
             objf.seek(0, 2)
             len_ = objf.tell()
             objf.seek(0, 0)
-            print("Processing file of size {} (at {})".format(len_, cur_pos))
+            print(f"Processing file of size {len_} (at {cur_pos})")
 
     def should_validate(self):
-        """
-        Filter out any items that should not be checked. Decision is made on
-        information already in the object.
+        """Filter out any items that should not be checked.
+
+        Decision is made on information already in the object.
         """
         if not self.production_criteria:
             # We're in test mode, process everything
@@ -214,8 +212,7 @@ class MozSignedObject(object):
         return self.check_exe_new()
 
     def check_exe_new(self):
-        """
-        Determine if the contents of `objf` are a valid Windows executable
+        """Determine if the contents of `objf` are a valid Windows executable
         signed by Mozilla's Authenticode certificate.
 
         :returns boolean: True if object has passed all tests.
@@ -223,35 +220,44 @@ class MozSignedObject(object):
         :raises SigVerifyException: if any specific problem is identified in
             the object
         """
+
         def show_output(results) -> None:
-            if True:  # TODO: fix MozSignedObject.verbose >= 2:
+            if MozSignedObject.verbose >= 2:
                 if results is None:
                     print("No results from osslsigncode run (likely exception)")
                 else:
-                    print(f"stdout {type(results.stdout)}; stderr {type(results.stderr)}")
-                    print(f"osslsigncode exitcode: {results.returncode}\n"
+                    print(
+                        f"stdout {type(results.stdout)}; stderr {type(results.stderr)}"
+                    )
+                    print(
+                        f"osslsigncode exitcode: {results.returncode}\n"
                         f"-- stderr:\n'{results.stderr}'"
-                        f"\n-- stdout\n'{results.stdout}'")
+                        f"\n-- stdout\n'{results.stdout}'"
+                    )
 
         cert_serial_number = "invalid hex data"
         with self.get_flo() as objf:
             self.show_file_stats(objf)
             # shelling out means we need a real file on disk, so create one
             with tempfile.NamedTemporaryFile(mode="w+b") as real_file:
-                print(f"real_file: {dir(real_file)}\n{repr(real_file)}")
-                print(f"objf: {dir(objf)}\n{repr(objf)}")
                 fname = getattr(real_file, "name", "unknown file name")
                 real_file.write(objf.read())
                 real_file.flush()
                 real_file.seek(0, 0)
-                results = None      # needed for linter
+                results = None  # needed for linter
                 try:
-                    results = subprocess.run(["osslsigncode", "verify", fname], universal_newlines=True,
-                        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                    results = subprocess.run(  # nosec -- tell bandit we're confident we're doing this correctly
+                        ["osslsigncode", "verify", fname],
+                        universal_newlines=True,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                    )
                     if results.returncode != 0:
                         # file is badly formed
                         show_output(results)
-                        raise SigVerifyBadSignature(f"Corrupted signature in {objf.name}: {results.returncode}")
+                        raise SigVerifyBadSignature(
+                            f"Corrupted signature in {objf.original_name}: {results.returncode}"
+                        )
                     else:
                         show_output(results)
                 except Exception as e:
@@ -268,12 +274,16 @@ class MozSignedObject(object):
                 # the following situation occurs with post balrog stub installers
                 # i.e. it shouldn't occur with items uploaded to product
                 # delivery
-                if l.startswith("Calculated PE checksum:") and l.endswith("MISMATCH!!!!"):
+                if l.startswith("Calculated PE checksum:") and l.endswith(
+                    "MISMATCH!!!!"
+                ):
                     show_output(results)
                     raise SigVerifyBadSignature("Checksum Mismatch")
             else:
                 show_output(results)
-                raise Exception(f"No serial in osslsigncode stdout (len {len(results.stdout)}): '{results.stdout}'")
+                raise Exception(
+                    f"No serial in osslsigncode stdout (len {len(results.stdout)}): '{results.stdout}'"
+                )
 
         valid_signature = cert_serial_number in VALID_CERTS
         if not valid_signature:
@@ -290,9 +300,11 @@ class BytesIOWithName(BytesIO):
     Args:
         original_name (str): name human will recognize
     """
-    def __init__(self, *args, original_name:str=None, **kwargs):
+
+    def __init__(self, *args, original_name: str = None, **kwargs):
         super().__init__(*args, **kwargs)
         self.original_name = original_name or "no-name-supplied"
+
 
 class MozSignedObjectViaLambda(MozSignedObject):
     def __init__(self, bucket=None, key=None, *args, **kwargs):
@@ -300,7 +312,7 @@ class MozSignedObjectViaLambda(MozSignedObject):
         self.bucket_name = bucket
         self.key_name = key
         self.s3_wait_time = 0
-        self.artifact_name = "s3://{}/{}".format(bucket, key)
+        self.artifact_name = f"s3://{bucket}/{key}"
 
         self.had_s3_error = False
         # S3 is an "eventually consistent" object store. Which leads to the
@@ -322,7 +334,7 @@ class MozSignedObjectViaLambda(MozSignedObject):
         # reported by the analyze_cloudwatch script.
 
     def get_location(self):
-        "For S3, we need the bucket & key names"
+        """For S3, we need the bucket & key names."""
         return self.bucket_name, self.key_name
 
     def report_validity(self, valid=None):
@@ -339,65 +351,70 @@ class MozSignedObjectViaLambda(MozSignedObject):
         message = self.format_message()
         if valid is None:
             # Infer validity from message
-            valid = message.startswith('pass')
+            valid = message.startswith("pass")
         if self.verbose:
-            print("msg: '{}'".format(message))
-            print("sum: '{}'".format(self.summary()))
+            print(f"msg: '{message}'")
+            print(f"sum: '{self.summary()}'")
         if (not valid) or self.verbose:
             self.send_sns(message)
 
     def summary(self):
-        debug("len errors {},  messages {}".format(len(self.errors),
-                                                   len(self.messages)))
+        debug(f"len errors {len(self.errors)},  messages {len(self.messages)}")
         json_info = {
-            'bucket': self.bucket_name,
-            'key': self.key_name,
-            'status': self.get_status(),
-            'results': self.errors + self.messages,
-            's3wait': self.s3_wait_time,
+            "bucket": self.bucket_name,
+            "key": self.key_name,
+            "status": self.get_status(),
+            "results": self.errors + self.messages,
+            "s3wait": self.s3_wait_time,
         }
         return json_info
 
     @trace_xray_subsegment()
     def get_flo(self):
-        s3_client = boto3.client('s3')
+        s3_client = boto3.client("s3")
         debug("in get_flo")
         start_waiting = time.time()
         try:
             # Make sure the object is really available taken from
             #   https://blog.rackspace.com/the-devnull-s3-bucket-hacking-with-aws-lambda-and-python
             # Don't use defaults, though -- that's 100 sec during testing!
-            waiter = s3_client.get_waiter('object_exists')
-            waiter.wait(Bucket=self.bucket_name, Key=self.key_name,
-                        WaiterConfig={'Delay': 3, 'MaxAttempts': 3})
-            result = s3_client.get_object(Bucket=self.bucket_name,
-                                          Key=self.key_name)
+            waiter = s3_client.get_waiter("object_exists")
+            waiter.wait(
+                Bucket=self.bucket_name,
+                Key=self.key_name,
+                WaiterConfig={"Delay": 3, "MaxAttempts": 3},
+            )
+            result = s3_client.get_object(Bucket=self.bucket_name, Key=self.key_name)
         except Exception as e:
-            debug("s3 exceptions type: {}".format(type(e)))
+            debug(f"s3 exceptions type: {type(e)}")
             self.had_s3_error = True
             text = repr(e)[:256]
-            self.add_error("failed to process s3 object {}/{} '{}'"
-                           .format(self.bucket_name, self.key_name, text))
+            self.add_error(
+                "failed to process s3 object {}/{} '{}'".format(
+                    self.bucket_name, self.key_name, text
+                )
+            )
             raise
         finally:
             self.s3_wait_time = time.time() - start_waiting
 
-        debug("after s3_client.get_object() result={}".format(type(result)))
-        if result['ContentLength'] > MAX_EXE_SIZE:
+        debug(f"after s3_client.get_object() result={type(result)}")
+        if result["ContentLength"] > MAX_EXE_SIZE:
             msg = """Too big: {}/{} {}
-                    ({})""".format(self.bucket_name, self.key_name,
-                                   result['ContentLength'], repr(result))
+                    ({})""".format(
+                self.bucket_name, self.key_name, result["ContentLength"], repr(result)
+            )
             print(msg)
             raise SigVerifyTooBig(msg)
         debug("before body read")
-        flo = BytesIOWithName(result['Body'].read(), original_name=self.key_name)
-        debug("after read() flo={}".format(type(flo)))
+        flo = BytesIOWithName(result["Body"].read(), original_name=self.key_name)
+        debug(f"after read() flo={type(flo)}")
         return flo
 
     @trace_xray_subsegment()
     def process_one_s3_file(self):
         if self.verbose:
-            print('Processing {}' .format(self.artifact_name))
+            print(f"Processing {self.artifact_name}")
         valid_sig = True
         try:
             if self.should_validate():
@@ -405,12 +422,14 @@ class MozSignedObjectViaLambda(MozSignedObject):
         except Exception as e:
             valid_sig = False
             if isinstance(e, SigVerifyException):
-                self.add_error("Failure reason: {}".format(type(e).__name__))
+                self.add_error(f"Failure reason: {type(e).__name__}")
             else:
                 text = repr(e)[:256]
-                self.add_error("failed to process s3 object {}/{} '{}'"
-                               .format(self.bucket_name, self.key_name,
-                                       text))
+                self.add_error(
+                    "failed to process s3 object {}/{} '{}'".format(
+                        self.bucket_name, self.key_name, text
+                    )
+                )
         self.set_status("pass" if valid_sig else "fail", only_if_unset=True)
         return valid_sig
 
@@ -419,31 +438,32 @@ class MozSignedObjectViaLambda(MozSignedObject):
         # use first line of incoming msg as subject, but AWS limit is under 100
         # chars.
         # ASSUME anything over is due to long s3 URL and use heuristic
-        subject = msg.split('\n')[0]
+        subject = msg.split("\n")[0]
         if len(subject) >= 100:
             # split assuming URL, then retain result (index 0) and file name
             # (index -1). File name should be sufficient to allow page
             # recipient to decide urgency of further investigation.
-            pieces = subject.split('/')
-            subject = "{} ... {}".format(pieces[0], pieces[-1])
+            pieces = subject.split("/")
+            subject = f"{pieces[0]} ... {pieces[-1]}"
             if len(subject) >= 100:
                 # don't try to be smarter, full text is still in 'msg'
                 subject = "Truncated subject, examine message"
 
         # append bucket & key, short key first
         msg += "\n{}\nkey={}\nbucket={}".format(
-                                            os.path.basename(self.key_name),
-                                            self.key_name, self.bucket_name)
+            os.path.basename(self.key_name), self.key_name, self.bucket_name
+        )
         # hack to get traceback in email
         if e:
             import traceback
+
             msg += traceback.format_exc()
         client = boto3.client("sns")
         # keep a global to prevent infinite recursion on arn error
         global topic_arn
-        topic_arn = os.environ.get('SNSARN', "")
+        topic_arn = os.environ.get("SNSARN", "")
         if self.verbose:
-            print("snsarn: {}".format(topic_arn))
+            print(f"snsarn: {topic_arn}")
         if not topic_arn:
             # bad config, we expected this in the environ
             # set flag so we don't re-raise
@@ -453,85 +473,81 @@ class MozSignedObjectViaLambda(MozSignedObject):
             # if the publish fails, we still want to continue, so we get the
             # details into the cloud watch logs. Otherwise, this can
             # (sometimes) terminate the lambda causing retries & DLQ
-            response = client.publish(Message=msg, Subject=subject,
-                                      TopicArn=topic_arn)
-            debug("sns publish: '{}'".format(response))
+            response = client.publish(Message=msg, Subject=subject, TopicArn=topic_arn)
+            debug(f"sns publish: '{response}'")
         except Exception as e:
-            self.add_message("sns publish failed\n"
-                             "   msg ({}): '{}'\n"
-                             "  subj ({}): '{}'\n"
-                             "exception: '{}'"
-                             "".format(len(msg), str(msg), len(subject),
-                                       str(subject), str(e)))
+            self.add_message(
+                "sns publish failed\n"
+                "   msg ({}): '{}'\n"
+                "  subj ({}): '{}'\n"
+                "exception: '{}'"
+                "".format(len(msg), str(msg), len(subject), str(subject), str(e))
+            )
 
 
 class SigVerifyException(Exception):
+    """Catchall for any signature problem found.
+
+    More specific issues are subclasses of SigVerifyException
     """
-    Catchall for any signature problem found. More specific issues are
-    subclasses of SigVerifyException
-    """
+
     pass
 
 
 class SigVerifyTooBig(SigVerifyException):
+    """The binary to test is bigger than we expect.
+
+    This is primarily a test to avoid a DoS of this service. However,
+    since we only expect to be called for valid executables, this is
+    still an anomaly.
     """
-    The binary to test is bigger than we expect. This is primarily a test to
-    avoid a DoS of this service. However, since we only expect to be called for
-    valid executables, this is still an anomaly.
-    """
+
     pass
 
 
 class SigVerifyNonMozSignature(SigVerifyException):
-    """
-    An valid signed ".exe" file, but not signed by Mozilla.
-    """
+    """An valid signed ".exe" file, but not signed by Mozilla."""
+
     pass
 
 
 class SigVerifyNoSignature(SigVerifyException):
-    """
-    An unsigned ".exe" file.
-    """
+    """An unsigned ".exe" file."""
+
     pass
 
 
 class SigVerifyBadSignature(SigVerifyException):
-    """
-    The signature is not valid or not from Mozilla.
-    """
+    """The signature is not valid or not from Mozilla."""
+
     pass
 
 
 def unpacked_s3_events(events, notices=None):
-    '''
-    Break apart the events structure and yield each S3 record
+    """Break apart the events structure and yield each S3 record.
 
     :param events: dict with key 'Records' & value a list of sub-events
     :param notices: dict in which to place a note if SNS detected
     :returns s3_event_record: sequence of s3 event records
-    '''
+    """
     try:
-        for event in events['Records']:
-            if 's3' in event:
+        for event in events["Records"]:
+            if "s3" in event:
                 yield event
-            elif 'Sns'in event:
+            elif "Sns" in event:
                 # embedded events encoded as json string
                 if notices:
-                    notices['unpacker'] = "SNS message unpacked"
-                for inner in unpacked_s3_events(json.loads(
-                                                event['Sns']['Message'])):
-                    yield inner
+                    notices["unpacker"] = "SNS message unpacked"
+                yield from unpacked_s3_events(json.loads(event["Sns"]["Message"]))
             else:
-                raise KeyError("unknown event type '{}'"
-                               .format(json.dumps(event)))
+                raise KeyError(f"unknown event type '{json.dumps(event)}'")
     except Exception:
-        raise ValueError("Invalid AWS Event '{}'".format(json.dumps(events)))
+        raise ValueError(f"Invalid AWS Event '{json.dumps(events)}'")
 
 
 def artifact_to_check_via_s3(lambda_event_record):
-    bucket_name = lambda_event_record['s3']['bucket']['name']
-    key_name = lambda_event_record['s3']['object']['key']
+    bucket_name = lambda_event_record["s3"]["bucket"]["name"]
+    key_name = lambda_event_record["s3"]["object"]["key"]
     # issue #14 - the below decode majik is from AWS sample code.
 
     real_key_name = urllib.parse.unquote_plus(key_name)
@@ -541,8 +557,7 @@ def artifact_to_check_via_s3(lambda_event_record):
 
 @trace_xray_subsegment()
 def lambda_handler(event, context):
-    """
-    The main entry point when this package is installed as an AWS Lambda
+    """The main entry point when this package is installed as an AWS Lambda
     Function.
 
     The determination of validity is always recorded via AWS SNS.
@@ -555,10 +570,11 @@ def lambda_handler(event, context):
                      providing one makes testing and other use cases simpler
     """
     MozSignedObject.set_verbose()
-    response = {'version': fx_sig_verify.__version__,
-                'input_event': event,
-                'request_id': context.aws_request_id,
-                }
+    response = {
+        "version": fx_sig_verify.__version__,
+        "input_event": event,
+        "request_id": context.aws_request_id,
+    }
     results = []
     had_S3_error = False
     for record in unpacked_s3_events(event, response):
@@ -567,7 +583,7 @@ def lambda_handler(event, context):
             valid_sig = False
             try:
                 valid_sig = artifact.process_one_s3_file()
-                debug("after process 1 {}".format(valid_sig))
+                debug(f"after process 1 {valid_sig}")
             except SigVerifyNonMozSignature as e:
                 msg = "non-moz signature"
                 debug(msg)
@@ -592,30 +608,28 @@ def lambda_handler(event, context):
                 artifact.send_sns(msg, e)
             except (Exception) as e:
                 # uncaught by me program failure
-                msg = ("app failure: " + str(type(e).__name__) +
-                       str(repr(e)))
+                msg = "app failure: " + str(type(e).__name__) + str(repr(e))
                 debug(msg)
                 artifact.send_sns(msg, e)
         except (Exception) as e:
             # double exception, should already have a message
-            artifact.add_error("app failure 2: {}".format(str(e)))
+            artifact.add_error(f"app failure 2: {str(e)}")
         artifact.report_validity()
         results.append(artifact.summary())
         had_S3_error = any((had_S3_error, artifact.had_s3_error))
-    response['results'] = results
+    response["results"] = results
     # always output response to CloudWatch (issue #17)
-    # in json format
-    # from contextlib import redirect_stdout
-    # import sys
-    # with redirect_stdout(sys.stderr):
-    #     print(json.dumps(response))
+    # in json format. It needs to be sent to stdout
+    print(json.dumps(response))
+
+    # make best effort to get debug info. seems to get lost in container
+    # version of lambda
+    import sys
+
+    sys.stderr.flush()
+    sys.stdout.flush()
+
     # AWS will retry for us if we fail. So let's do that on an S3 error.
     if had_S3_error:
-        # make best effort to get debug info. seems to get lost in container
-        # version of lambda
-        # TODO: delete flush if it doesn't help with error message
-        import sys
-        sys.stderr.flush()
-        sys.stdout.flush()
-        raise IOError("S3 error, try again")
+        raise OSError("S3 error, try again")
     return response

@@ -9,6 +9,9 @@ include .coveragerc
 include .cookiecutterrc
 include .editorconfig
 include .isort.cfg
+include .bandit-baseline.json
+include .pre-commit-config.yaml
+include .secrets.baseline
 
 include AUTHORS.rst
 include CHANGELOG.rst

@@ -26,7 +26,7 @@ project = "fx-sig-verify"
 year = "2017"
 author = "Hal Wine"
 copyright = f"{year}, {author}"
-version = release = "0.6.0"
+version = release = "0.6.1"
 
 pygments_style = "trac"
 templates_path = ["."]
