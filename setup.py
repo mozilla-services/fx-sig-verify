@@ -20,7 +20,7 @@ def read(*names, **kwargs):
 
 setup(
     name="fx_sig_verify",
-    version="0.6.0",
+    version="0.6.1",
     license="MPL2",
     description="AWS Lambda to check code signatures.",
     author="Hal Wine",
