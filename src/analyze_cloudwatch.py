@@ -33,6 +33,7 @@ PERF_OUTPUT = """
 {bill_time_seconds:19,.0f} seconds billed
 {gb_seconds:19,.0f} GBi seconds (AWS Billing Unit)
 {average_time:19,.0f} average milliseconds per run
+        {max_successful_bill_time:19,.0f} max milliseconds for a successful run
 {max_memory_invocations:19,d} times we used all memory
     {max_memory_pcnt:19.0f}% of runs maxing out memory
     {max_used_memory:19.0f} MBi max memory used
@@ -212,6 +213,7 @@ class MetricSummerizer(Summerizer):
             "invocations": 0,
             "total_time": 0,
             "bill_time": 0,
+            "max_successful_bill_time": 0,
             "average_time": 0,
             "max_used_memory": 0,
             "max_memory_invocations": 0,
@@ -232,13 +234,14 @@ class MetricSummerizer(Summerizer):
             raise SyntaxError(f"Unexpected format: '{line.strip()}'")
         self.counts["invocations"] += 1
         self.counts["total_time"] += float(match.group("real_time"))
-        self.counts["bill_time"] += float(match.group("bill_time"))
+        bill_time = float(match.group("bill_time"))
+        self.counts["bill_time"] += bill_time
         self.counts["max_used_memory"] = max(
             float(match.group("mem_used")), self.counts["max_used_memory"]
         )
         self.counts["total_memory"] += float(match.group("mem_used"))
         self.counts["total_allocated_memory"] = float(match.group("mem_allocated"))
-        if match.group("mem_allocated") == match.group("mem_used"):
+        if match.group("mem_allocated") <= match.group("mem_used"):
             self.counts["max_memory_invocations"] += 1
         rq_id = match.group("request_id")
         if float(match.group("real_time")) >= CONFIGURED_MAX_RUN_TIME_MS:
@@ -266,6 +269,11 @@ class MetricSummerizer(Summerizer):
             # but always keep track of successes to offset one failure.
             # (we haven't seen a double failure yet)
             self.retried_requests[rq_id] -= 1
+
+            # keep track of max time for successful runs
+            self.counts["max_successful_bill_time"] = max(
+                self.counts["max_successful_bill_time"], bill_time
+            )
 
     def print_final_report(self):
         self.compute_totals()
