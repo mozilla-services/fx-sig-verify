@@ -241,7 +241,7 @@ class MetricSummerizer(Summerizer):
         )
         self.counts["total_memory"] += float(match.group("mem_used"))
         self.counts["total_allocated_memory"] = float(match.group("mem_allocated"))
-        if match.group("mem_allocated") <= match.group("mem_used"):
+        if int(match.group("mem_allocated")) <= int(match.group("mem_used")):
             self.counts["max_memory_invocations"] += 1
         rq_id = match.group("request_id")
         if float(match.group("real_time")) >= CONFIGURED_MAX_RUN_TIME_MS:
